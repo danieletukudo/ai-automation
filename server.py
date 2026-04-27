@@ -9,6 +9,8 @@ Then open: http://localhost:5000
 """
 
 import os
+import json
+import threading
 import requests
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
@@ -22,6 +24,63 @@ CORS(app)
 app.config["API_KEY"] = (os.getenv("TEMPLATED_API_KEY") or "").strip()
 app.config["TEMPLATE_ID"] = (os.getenv("TEMPLATED_TEMPLATE_ID") or "").strip()
 BASE_URL = "https://api.templated.io/v1"
+
+
+# ─── Fonts catalog (Google Fonts) ─────────────────────────
+# The frontend expects:
+#   { fonts: [{name, category, popularity?}], ms_fonts: [...], popular: [...] }
+_GOOGLE_FONTS_CACHE: dict | None = None
+_GOOGLE_FONTS_LOCK = threading.Lock()
+
+# Handful of fonts that tend to be crowd favourites (used by UI).
+POPULAR_FONTS = [
+    "Roboto", "Inter", "Open Sans", "Lato", "Montserrat", "Poppins",
+    "Noto Sans", "Raleway", "Nunito", "Work Sans", "Source Sans 3",
+    "Playfair Display", "Merriweather", "Lora", "EB Garamond",
+    "IBM Plex Sans", "IBM Plex Serif", "DM Sans", "Fira Sans", "Rubik",
+]
+
+
+def _fetch_google_fonts() -> list[dict]:
+    """Pull Google's full public font catalog (no API key needed)."""
+    r = requests.get(
+        "https://fonts.google.com/metadata/fonts",
+        timeout=20,
+        headers={"User-Agent": "Mozilla/5.0 (compatible; templated-editor/1.0)"},
+    )
+    r.raise_for_status()
+    body = (r.text or "").lstrip()
+    if body.startswith(")]}'"):
+        body = body[4:]
+    data = json.loads(body)
+    out: list[dict] = []
+    for f in data.get("familyMetadataList") or []:
+        out.append({
+            "name": f.get("family"),
+            "category": f.get("category") or "Other",
+            # Google's "popularity" is a rank (lower is more popular)
+            "popularity": f.get("popularity"),
+        })
+    return [x for x in out if x.get("name")]
+
+
+@app.route("/api/fonts", methods=["GET"])
+def list_fonts():
+    """Return Google Fonts catalog for the UI."""
+    global _GOOGLE_FONTS_CACHE
+    with _GOOGLE_FONTS_LOCK:
+        if _GOOGLE_FONTS_CACHE is None:
+            try:
+                fonts = _fetch_google_fonts()
+            except Exception as e:
+                return jsonify({"error": f"could not load Google fonts: {e}"}), 502
+            _GOOGLE_FONTS_CACHE = {
+                "fonts": fonts,
+                "ms_fonts": [],
+                "popular": POPULAR_FONTS,
+                "total": len(fonts),
+            }
+        return jsonify(_GOOGLE_FONTS_CACHE)
 
 
 # ─── Per-request credentials (API key + template id) ──────
