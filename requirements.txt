@@ -3,3 +3,8 @@ flask-cors
 openai
 Pillow
 requests
+httpx
+python-dotenv
+tqdm
+pydantic
+click
