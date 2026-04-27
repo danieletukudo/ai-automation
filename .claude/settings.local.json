@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "WebFetch(domain:docs.templated.io)",
+      "Bash(curl -sv http://localhost:5001/api/layers)",
+      "Bash(curl:*)",
+      "Bash(pip3 show:*)",
+      "Bash(pip3 install:*)",
+      "Bash(lsof -ti:5001)",
+      "Bash(xargs kill:*)",
+      "Bash(kill 2230 2232)",
+      "Bash(kill -9 2230 2232)",
+      "Bash(kill -9 5638 5640)"
+    ]
+  }
+}

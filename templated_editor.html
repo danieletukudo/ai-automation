@@ -1,0 +1,2784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remoting.work</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .topbar {
+            background: #1a1a1a;
+            border-bottom: 1px solid #2a2a2a;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .topbar h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            flex: 1;
+        }
+
+        .topbar .tagline {
+            font-size: 11px;
+            color: #555;
+            font-style: italic;
+        }
+
+        .template-id {
+            font-size: 12px;
+            color: #888;
+            background: #111;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid #2a2a2a;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-primary { background: #2563eb; color: #fff; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-primary:disabled { background: #1e3a5f; color: #6b8bc3; cursor: not-allowed; }
+
+        .btn-secondary { background: #1f1f1f; color: #e0e0e0; border: 1px solid #333; }
+        .btn-secondary:hover { background: #2a2a2a; }
+
+        .btn-ghost {
+            background: transparent;
+            color: #888;
+            border: 1px solid #2a2a2a;
+            padding: 6px 14px;
+            font-size: 12px;
+        }
+        .btn-ghost:hover { background: #1a1a1a; color: #e0e0e0; }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            height: calc(100vh - 57px);
+        }
+
+        /* LEFT */
+        .fields-panel {
+            background: #1a1a1a;
+            border-right: 1px solid #2a2a2a;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .panel-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #666;
+            margin-bottom: 16px;
+            margin-top: 4px;
+        }
+
+        .field-section { margin-bottom: 24px; }
+
+        .field-section h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .field-group { margin-bottom: 12px; }
+
+        .field-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .field-label .layer-id {
+            font-size: 10px;
+            color: #555;
+            font-family: monospace;
+        }
+
+        .field-input {
+            width: 100%;
+            background: #111;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 13px;
+            padding: 8px 10px;
+            transition: border-color 0.15s;
+            resize: none;
+        }
+        .field-input:focus { outline: none; border-color: #2563eb; }
+        .field-input.text-input { min-height: 60px; resize: vertical; }
+
+        .color-row { display: flex; align-items: center; gap: 8px; }
+        .color-row input[type="color"] {
+            width: 40px; height: 36px;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            background: #111;
+            cursor: pointer; padding: 2px;
+        }
+        .color-row input[type="text"] { flex: 1; }
+
+        .image-preview-thumb {
+            width: 100%; height: 80px;
+            object-fit: contain;
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            margin-top: 6px;
+        }
+
+        .image-url-row { display: flex; gap: 6px; }
+        .image-url-row input { flex: 1; }
+
+        .slot-size {
+            margin-left: 6px;
+            padding: 1px 6px;
+            font-size: 10px;
+            font-weight: 500;
+            color: #888;
+            background: #0f0f0f;
+            border: 1px solid #2a2a2a;
+            border-radius: 4px;
+            letter-spacing: 0.2px;
+        }
+        .image-fit-row {
+            display: flex; align-items: center; gap: 6px;
+            margin-top: 6px;
+            font-size: 11px; color: #888;
+        }
+        .image-fit-row select {
+            flex: 1;
+            background: #111; color: #e0e0e0;
+            border: 1px solid #2a2a2a; border-radius: 6px;
+            padding: 5px 8px; font-size: 12px;
+        }
+        .image-fit-row select:focus { outline: none; border-color: #2563eb; }
+        .fit-status { font-size: 10px; min-width: 56px; text-align: right; }
+
+        /* Font controls under each text field (collapsible) */
+        details.font-details {
+            margin-top: 6px;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            background: #0f0f0f;
+        }
+        details.font-details > summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 6px 8px;
+            font-size: 11px; color: #888;
+            user-select: none;
+        }
+        details.font-details > summary::-webkit-details-marker { display: none; }
+        details.font-details[open] > summary { color: #e0e0e0; border-bottom: 1px solid #2a2a2a; }
+        details.font-details > summary .aa {
+            font-weight: 700; margin-right: 6px; color: #60a5fa;
+        }
+        details.font-details > summary .font-badge {
+            margin-left: 6px;
+            padding: 1px 6px;
+            background: #111; border: 1px solid #2a2a2a; border-radius: 4px;
+            color: #aaa; font-size: 10px;
+        }
+        .font-grid {
+            display: grid;
+            grid-template-columns: 1fr 90px 72px 40px;
+            gap: 6px; padding: 8px;
+            align-items: center;
+        }
+        .font-grid label {
+            font-size: 10px; color: #666; margin-bottom: 2px; display: block;
+        }
+        .font-grid input[type="text"],
+        .font-grid input[type="number"],
+        .font-grid select {
+            width: 100%;
+            background: #111; color: #e0e0e0;
+            border: 1px solid #2a2a2a; border-radius: 4px;
+            padding: 5px 6px; font-size: 12px;
+        }
+        .font-grid input:focus, .font-grid select:focus {
+            outline: none; border-color: #2563eb;
+        }
+        .font-grid input[type="color"] {
+            width: 100%; height: 28px; padding: 2px;
+            background: #111; border: 1px solid #2a2a2a; border-radius: 4px;
+            cursor: pointer;
+        }
+        .font-reset {
+            grid-column: 1 / -1; justify-self: end;
+            font-size: 10px; color: #888;
+            background: transparent; border: none; cursor: pointer;
+            padding: 2px 4px;
+        }
+        .font-reset:hover { color: #60a5fa; }
+
+        /* Row 1 of the font grid: "Font family" label + search box + select */
+        .font-family-cell {
+            grid-column: 1 / -1;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .font-search-row {
+            display: flex; gap: 4px; align-items: center;
+        }
+        .font-search-row input[type="search"] {
+            flex: 1;
+            background: #111; color: #e0e0e0;
+            border: 1px solid #2a2a2a; border-radius: 4px;
+            padding: 5px 8px 5px 22px; font-size: 12px;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'><circle cx='11' cy='11' r='7'/><line x1='21' y1='21' x2='16.6' y2='16.6'/></svg>");
+            background-repeat: no-repeat;
+            background-position: 5px center;
+            background-size: 12px 12px;
+        }
+        .font-search-row input[type="search"]:focus { outline: none; border-color: #2563eb; }
+        .font-count {
+            font-size: 10px; color: #666; min-width: 60px; text-align: right;
+        }
+        .font-select-wrap select { min-height: 28px; }
+
+        /* Below the select, a secondary row for weight / size / color */
+        .font-extras {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: 90px 80px 48px 1fr;
+            gap: 6px;
+            align-items: end;
+        }
+
+        .btn-sm {
+            padding: 6px 10px; font-size: 12px; white-space: nowrap;
+            background: #111; color: #888; border: 1px solid #2a2a2a;
+            border-radius: 4px; cursor: pointer;
+        }
+        .btn-sm:hover { background: #1a1a1a; color: #e0e0e0; }
+
+        /* RIGHT */
+        .preview-panel {
+            display: flex;
+            flex-direction: column;
+            background: #0a0a0a;
+            overflow: hidden;
+        }
+
+        .preview-toolbar {
+            background: #1a1a1a;
+            border-bottom: 1px solid #2a2a2a;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .preview-toolbar .status { font-size: 12px; color: #666; flex: 1; }
+        .preview-toolbar .status.success { color: #22c55e; }
+        .preview-toolbar .status.error { color: #ef4444; }
+
+        .preview-container {
+            flex: 1; display: flex; align-items: center;
+            justify-content: center; padding: 32px; overflow: auto;
+        }
+
+        .preview-container img {
+            max-width: 100%; max-height: 100%;
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        }
+
+        .preview-placeholder {
+            display: flex; flex-direction: column;
+            align-items: center; gap: 16px; color: #333;
+        }
+        .preview-placeholder svg { opacity: 0.3; }
+
+        /* Spinner */
+        .spinner {
+            width: 20px; height: 20px;
+            border: 2px solid #2563eb44;
+            border-top-color: #2563eb;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 24px; right: 24px;
+            background: #1a1a1a; border: 1px solid #2a2a2a;
+            border-radius: 8px; padding: 12px 18px;
+            font-size: 13px; color: #e0e0e0;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            z-index: 999; opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.2s; pointer-events: none;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { border-color: #22c55e44; }
+        .toast.error { border-color: #ef44444444; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+        /* ── AI MODAL ── */
+        .ai-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+        .ai-overlay.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .ai-modal {
+            background: #141414;
+            border: 1px solid #2a2a2a;
+            border-radius: 12px;
+            width: min(900px, 95vw);
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .ai-modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #2a2a2a;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .ai-modal-header h2 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            flex: 1;
+        }
+
+        .ai-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: #22c55e22;
+            color: #22c55e;
+            border: 1px solid #22c55e44;
+        }
+
+        .ai-modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .ai-modal-footer {
+            padding: 14px 20px;
+            border-top: 1px solid #2a2a2a;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        /* Each suggestion card */
+        .scard {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .scard.selected { border-color: #22c55e; }
+
+        .scard-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .scard-layer {
+            font-size: 11px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .scard-words {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .scard-words.ok { background: #22c55e22; color: #22c55e; }
+        .scard-words.bad { background: #ef444422; color: #ef4444; }
+
+        .scard-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .scard-col label {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #555;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .scard-col.original-text {
+            font-size: 12px;
+            color: #888;
+            background: #0f0f0f;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            padding: 8px 10px;
+            min-height: 36px;
+            line-height: 1.4;
+        }
+
+        .scard-col.ai-text textarea {
+            width: 100%;
+            background: #0f0f0f;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            color: #22c55e;
+            font-size: 12px;
+            padding: 8px 10px;
+            min-height: 36px;
+            line-height: 1.4;
+            resize: none;
+            font-family: inherit;
+        }
+        .scard-col.ai-text textarea:focus {
+            outline: none;
+            border-color: #22c55e;
+        }
+
+        .scard-reason {
+            font-size: 11px;
+            color: #555;
+            font-style: italic;
+            margin-bottom: 10px;
+        }
+
+        .scard-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .scard-actions label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #666;
+            user-select: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid #2a2a2a;
+            transition: all 0.15s;
+        }
+        .scard-actions label:hover { color: #aaa; border-color: #444; }
+        .scard-actions label.ai-selected { border-color: #22c55e; color: #22c55e; background: #22c55e11; }
+
+        /* Loading / empty states */
+        .ai-loading {
+            display: flex; flex-direction: column;
+            align-items: center; gap: 12px;
+            padding: 60px 20px; text-align: center;
+        }
+        .ai-loading p { font-size: 13px; color: #555; }
+
+        .ai-empty {
+            display: flex; flex-direction: column;
+            align-items: center; gap: 12px;
+            padding: 60px 20px; text-align: center;
+            color: #333;
+        }
+        .ai-empty svg { opacity: 0.2; }
+        .ai-empty p { font-size: 13px; color: #444; }
+
+        /* ── Partner Brief form (inside Adapt modal) ── */
+        .brief-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .brief-grid .full { grid-column: 1 / -1; }
+        .brief-grid label {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #666;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .brief-grid input,
+        .brief-grid textarea,
+        .brief-grid select {
+            width: 100%;
+            background: #0f0f0f;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 13px;
+            padding: 8px 10px;
+            font-family: inherit;
+            resize: vertical;
+        }
+        .brief-grid input:focus,
+        .brief-grid textarea:focus,
+        .brief-grid select:focus {
+            outline: none; border-color: #2563eb;
+        }
+        .brief-colors { display: flex; gap: 8px; align-items: center; }
+        .brief-colors input[type="color"] {
+            width: 36px; height: 34px;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            background: #0f0f0f;
+            padding: 2px; cursor: pointer;
+        }
+        .brief-colors input[type="text"] {
+            flex: 1;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        /* ── Strategy summary card ── */
+        .strategy-card {
+            background: linear-gradient(135deg, #1a1a2e 0%, #1a1a1a 100%);
+            border: 1px solid #2563eb44;
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin-bottom: 16px;
+        }
+        .strategy-card h3 {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #60a5fa;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 16px;
+            font-size: 12px;
+        }
+        .strategy-grid .full { grid-column: 1 / -1; }
+        .strategy-grid .k {
+            color: #555;
+            text-transform: uppercase;
+            font-size: 9.5px;
+            letter-spacing: 0.06em;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .strategy-grid .v {
+            color: #dcdcdc;
+            line-height: 1.45;
+        }
+        .tone-bars { display: flex; gap: 8px; flex-wrap: wrap; }
+        .tone-bar {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: #111;
+            border: 1px solid #2a2a2a;
+            color: #aaa;
+        }
+        .tone-bar b { color: #60a5fa; margin-left: 4px; }
+        .palette-swatches { display: flex; gap: 6px; }
+        .palette-swatches span {
+            width: 22px; height: 22px;
+            border-radius: 4px;
+            border: 1px solid #2a2a2a;
+        }
+
+        /* ── Color diff card ── */
+        .ccard {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+        }
+        .ccard.selected { border-color: #22c55e; }
+        .ccard-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .ccard-layer {
+            font-size: 11px; font-weight: 600; color: #666;
+            text-transform: uppercase; letter-spacing: 0.06em;
+        }
+        .swatch-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .swatch-box {
+            display: flex; align-items: center; gap: 10px;
+            background: #0f0f0f;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            padding: 8px 10px;
+        }
+        .swatch-dot {
+            width: 28px; height: 28px;
+            border-radius: 6px; flex-shrink: 0;
+            border: 1px solid #2a2a2a;
+        }
+        .swatch-text {
+            font-family: monospace;
+            font-size: 11px;
+            color: #aaa;
+            flex: 1;
+            word-break: break-all;
+        }
+        .swatch-text.suggested { color: #22c55e; }
+
+        /* ── Mode picker & mode-specific panels ── */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 18px 0 10px;
+        }
+        .section-header .panel-title { margin: 0; }
+        .section-hint { font-size: 11px; color: #666; }
+
+        .mode-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .mode-card {
+            background: #0f0f0f;
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            padding: 12px 14px;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .mode-card:hover { border-color: #3a3a3a; }
+        .mode-card.active {
+            border-color: #2563eb;
+            background: #10172a;
+            box-shadow: inset 0 0 0 1px #2563eb;
+        }
+        .mode-card .mode-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e0e0e0;
+            margin-bottom: 4px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .mode-card .mode-desc {
+            font-size: 11.5px;
+            color: #888;
+            line-height: 1.45;
+        }
+        .mode-card .mode-num {
+            background: #1f1f1f;
+            border: 1px solid #2a2a2a;
+            color: #888;
+            width: 22px; height: 22px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center; justify-content: center;
+            font-size: 11px;
+        }
+        .mode-card.active .mode-num {
+            background: #2563eb;
+            color: #fff;
+            border-color: #2563eb;
+        }
+
+        /* Mode-specific panel */
+        .mode-panel {
+            background: #0f0f0f;
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+        }
+        .mode-panel .mode-panel-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #60a5fa;
+            margin-bottom: 10px;
+        }
+
+        /* Find-replace rule rows */
+        .rule-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .rule-row input {
+            width: 100%;
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 13px;
+            padding: 8px 10px;
+        }
+        .rule-row input:focus { outline: none; border-color: #2563eb; }
+        .rule-row .rule-del {
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            color: #888;
+            border-radius: 6px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .rule-row .rule-del:hover { color: #ef4444; border-color: #ef4444; }
+
+        /* Image override rows */
+        .img-override-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .img-override-row select,
+        .img-override-row input {
+            width: 100%;
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 13px;
+            padding: 8px 10px;
+        }
+
+        .add-btn {
+            background: transparent;
+            border: 1px dashed #333;
+            color: #888;
+            border-radius: 6px;
+            padding: 6px 14px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .add-btn:hover { color: #60a5fa; border-color: #60a5fa; }
+
+        /* Brand assets section */
+        .brand-assets-grid {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 10px 12px;
+            align-items: center;
+        }
+        .brand-assets-grid .brand-row-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #888;
+        }
+        .brand-assets-grid .brand-row {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 8px;
+        }
+        .brand-assets-grid select,
+        .brand-assets-grid input {
+            width: 100%;
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 13px;
+            padding: 8px 10px;
+        }
+
+        /* Image diff card (review step) */
+        .icard {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            align-items: center;
+        }
+        .icard.selected { border-color: #22c55e; }
+        .icard .img-box {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .icard img {
+            width: 56px; height: 56px; object-fit: cover;
+            border-radius: 6px; border: 1px solid #2a2a2a;
+            background: #0f0f0f;
+        }
+        .icard .img-info { font-size: 11px; color: #888; word-break: break-all; }
+        .icard .img-info.suggested { color: #22c55e; }
+        .icard-footer {
+            grid-column: 1 / -1;
+            display: flex; justify-content: space-between; align-items: center;
+            padding-top: 8px; border-top: 1px solid #2a2a2a;
+            font-size: 12px; color: #888;
+        }
+    </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+    <h1>Remoting.work Marketer</h1>
+    <span class="tagline">AI for flier design and automation</span>
+    <input class="field-input" id="apiKeyInput" placeholder="Templated API Key (UUID)"
+           style="max-width:290px;min-width:220px;height:34px;padding:6px 10px;font-size:12px" />
+    <input class="field-input" id="templateIdInput" placeholder="Template ID (UUID)"
+           style="max-width:290px;min-width:220px;height:34px;padding:6px 10px;font-size:12px" />
+    <span class="template-id" id="templateIdDisplay">—</span>
+    <button class="btn btn-secondary" onclick="applyCredsAndReload()">Load</button>
+    <button class="btn btn-ghost" id="adaptBtn" onclick="openAdaptModal()">
+        ✦ Adapt to Partner
+    </button>
+    <button class="btn btn-ghost" id="aiCopyBtn" onclick="openAiModal()">
+        ✦ Review AI Copy
+    </button>
+    <button class="btn btn-secondary" onclick="resetAllFields()">Reset All</button>
+    <button class="btn btn-primary" id="renderBtn" onclick="renderTemplate()">
+        ▶ Generate
+    </button>
+</div>
+
+<!-- MAIN 2-COLUMN LAYOUT -->
+<div class="layout">
+
+    <!-- COLUMN 1: EDITABLE FIELDS -->
+    <div class="fields-panel" id="fieldsPanel">
+        <div class="panel-title">Loading layers...</div>
+    </div>
+
+    <!-- COLUMN 2: PREVIEW -->
+    <div class="preview-panel">
+        <div class="preview-toolbar">
+            <span class="status" id="statusText">Load a template to preview</span>
+            <button class="btn btn-secondary" id="downloadBtn" style="display:none" onclick="downloadImage()">
+                ⬇ Download
+            </button>
+        </div>
+        <div class="preview-container" id="previewContainer">
+            <div class="preview-placeholder">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <path d="M21 15l-5-5L5 21"/>
+                </svg>
+                <span style="font-size:14px">Preview will appear here after generation</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI REVIEW MODAL -->
+<div class="ai-overlay" id="aiOverlay" onclick="closeAiModalOnOverlay(event)">
+    <div class="ai-modal" onclick="event.stopPropagation()">
+        <div class="ai-modal-header">
+            <span class="ai-badge">✦ Gemini AI</span>
+            <h2>AI Copy Review — Original vs Suggested</h2>
+            <button class="btn btn-ghost" onclick="closeAiModal()" style="margin-left:auto">✕ Close</button>
+        </div>
+        <div class="ai-modal-body" id="aiModalBody">
+            <div class="ai-loading">
+                <div class="spinner" style="margin:0 auto"></div>
+                <p>Click "Load AI Suggestions" to analyze your template text</p>
+            </div>
+        </div>
+        <div class="ai-modal-footer">
+            <button class="btn btn-secondary" onclick="closeAiModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="loadAiSuggestions()" id="loadAiBtn">Load AI Suggestions</button>
+            <button class="btn btn-primary" onclick="applyAiAndClose()" id="applyAiBtn" style="display:none;background:#22c55e;">Apply Selected & Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ADAPT TO PARTNER MODAL -->
+<div class="ai-overlay" id="adaptOverlay" onclick="closeAdaptModalOnOverlay(event)">
+    <div class="ai-modal" onclick="event.stopPropagation()">
+        <div class="ai-modal-header">
+            <span class="ai-badge">✦ Adapt</span>
+            <h2>Adapt flier for a partner</h2>
+            <button class="btn btn-ghost" onclick="closeAdaptModal()" style="margin-left:auto">✕ Close</button>
+        </div>
+        <div class="ai-modal-body" id="adaptModalBody">
+            <!-- STEP 1 — Brand Assets (always required) -->
+            <div id="briefForm">
+                <div class="section-header">
+                    <div class="panel-title">Step 1 · Brand Assets</div>
+                    <span class="section-hint">Logo · QR code · Website link (text)</span>
+                </div>
+                <div class="mode-panel">
+                    <div class="brand-assets-grid">
+                        <div class="brand-row-label">Logo image</div>
+                        <div class="brand-row">
+                            <select id="ba_logo_layer"><option value="">(select layer)</option></select>
+                            <input id="ba_logo_url" placeholder="https://example.com/logo.png">
+                        </div>
+
+                        <div class="brand-row-label">QR code image</div>
+                        <div class="brand-row">
+                            <select id="ba_qr_layer"><option value="">(select layer)</option></select>
+                            <input id="ba_qr_url" placeholder="https://example.com/qr.png">
+                        </div>
+
+                        <div class="brand-row-label">Website link (text)</div>
+                        <div class="brand-row">
+                            <select id="ba_web_layer"><option value="">(select layer)</option></select>
+                            <input id="ba_web_text" placeholder="remoting.work/illinois-chamber">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Brand colors: used by "Logo, QR, website & colors" (no AI) and by AI modes -->
+                <div id="brandColorsWrap">
+                    <div class="section-header">
+                        <div class="panel-title">Brand colors</div>
+                        <span class="section-hint" id="brandColorsHint">Primary &amp; accent for this flier</span>
+                    </div>
+                    <div class="mode-panel">
+                        <div class="brief-grid" style="margin-bottom:0">
+                            <div>
+                                <label>Primary Brand Color</label>
+                                <div class="brief-colors">
+                                    <input type="color" id="pb_primary_color" value="#0b2545"
+                                        oninput="document.getElementById('pb_primary').value=this.value">
+                                    <input type="text" id="pb_primary" value="#0b2545"
+                                        oninput="syncColorInput('pb_primary_color', this.value)">
+                                </div>
+                            </div>
+                            <div>
+                                <label>Accent Brand Color</label>
+                                <div class="brief-colors">
+                                    <input type="color" id="pb_accent_color" value="#0fb5a7"
+                                        oninput="document.getElementById('pb_accent').value=this.value">
+                                    <input type="text" id="pb_accent" value="#0fb5a7"
+                                        oninput="syncColorInput('pb_accent_color', this.value)">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Partner brief: AI rewrite modes only (no partner name needed for logo/QR/colors mode) -->
+                <div id="partnerBriefWrap" style="display:none">
+                    <div class="section-header">
+                        <div class="panel-title">Partner brief</div>
+                        <span class="section-hint">Used when AI rewrites copy and plans colors</span>
+                    </div>
+                    <div class="brief-grid">
+                        <div>
+                            <label>Partner Name *</label>
+                            <input id="pb_name" placeholder="Illinois State Black Chamber of Commerce">
+                        </div>
+                        <div>
+                            <label>Partner Type</label>
+                            <select id="pb_type">
+                                <option value="">(let AI infer)</option>
+                                <option value="chamber">Chamber</option>
+                                <option value="mastermind">Mastermind / Network</option>
+                                <option value="consulting">Consulting Firm</option>
+                                <option value="community">Community Org / CDC</option>
+                                <option value="nonprofit">Nonprofit</option>
+                                <option value="advocacy">Advocacy Group</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Industry</label>
+                            <input id="pb_industry" placeholder="Business Advocacy, Black-owned Business Support">
+                        </div>
+                        <div>
+                            <label>Audience</label>
+                            <input id="pb_audience" placeholder="Member business owners in Illinois">
+                        </div>
+                        <div class="full">
+                            <label>Goal of this post</label>
+                            <input id="pb_goal" placeholder="Drive members to scan the QR and hire via remoting.work">
+                        </div>
+                        <div>
+                            <label>Tone Hints</label>
+                            <input id="pb_tone" placeholder="professional, empowering, authoritative">
+                        </div>
+                        <div>
+                            <label>Link URL (optional)</label>
+                            <input id="pb_link" placeholder="https://remoting.work/illinois-chamber">
+                        </div>
+                        <div class="full">
+                            <label>Notes (how should it differ from the current template?)</label>
+                            <textarea id="pb_notes" rows="2"
+                                placeholder="More institutional and darker than the input; drop the casual tone."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3 — Mode picker -->
+                <div class="section-header">
+                    <div class="panel-title">Choose mode</div>
+                    <span class="section-hint">Pick one — controls how text is handled</span>
+                </div>
+                <div class="mode-grid">
+                    <div class="mode-card active" data-mode="logo_qr_website_colors" onclick="selectMode('logo_qr_website_colors')">
+                        <div class="mode-title"><span class="mode-num">1</span> Logo, QR, website &amp; colors</div>
+                        <div class="mode-desc">No AI, fast. Only swap logo, QR, website link text, and your primary/accent colors. All other words stay the same.</div>
+                    </div>
+                    <div class="mode-card" data-mode="ai_rewrite" onclick="selectMode('ai_rewrite')">
+                        <div class="mode-title"><span class="mode-num">2</span> AI Rewrite (full)</div>
+                        <div class="mode-desc">Partner brief → AI rewrites marketing text and suggests colors (slow — uses Gemini).</div>
+                    </div>
+                    <div class="mode-card" data-mode="find_replace" onclick="selectMode('find_replace')">
+                        <div class="mode-title"><span class="mode-num">3a</span> Find &amp; Replace</div>
+                        <div class="mode-desc">Literal substitution. Tell us which words to find and what to replace them with.</div>
+                    </div>
+                    <div class="mode-card" data-mode="ai_with_rules" onclick="selectMode('ai_with_rules')">
+                        <div class="mode-title"><span class="mode-num">3b</span> AI with Rules</div>
+                        <div class="mode-desc">AI writes new copy but must obey your find→replace rules (e.g. company name).</div>
+                    </div>
+                    <div class="mode-card" data-mode="image_only" onclick="selectMode('image_only')">
+                        <div class="mode-title"><span class="mode-num">4</span> Swap Image Only</div>
+                        <div class="mode-desc">Replace one or more image layers with URLs you provide. No text or color changes.</div>
+                    </div>
+                </div>
+
+                <!-- Find/replace rules panel (shown for modes 3a and 3b) -->
+                <div class="mode-panel" id="rulesPanel" style="display:none">
+                    <div class="mode-panel-title">Find &amp; Replace Rules</div>
+                    <div id="rulesList"></div>
+                    <button class="add-btn" onclick="addRuleRow()">+ Add rule</button>
+                </div>
+
+                <!-- Image overrides panel (shown for all modes; required for image_only) -->
+                <div class="mode-panel" id="imageOverridePanel">
+                    <div class="mode-panel-title" id="imageOverrideTitle">
+                        Optional · Swap additional images
+                    </div>
+                    <div style="font-size:11px;color:#666;margin-bottom:8px">
+                        Logo and QR are handled above. Use this for other image layers (hero photo, product shot, etc.).
+                    </div>
+                    <div id="imageOverrideList"></div>
+                    <button class="add-btn" onclick="addImageOverrideRow()">+ Add image override</button>
+                </div>
+            </div>
+
+            <!-- Results appear here after adapt runs -->
+            <div id="adaptResults"></div>
+        </div>
+        <div class="ai-modal-footer">
+            <button class="btn btn-secondary" onclick="closeAdaptModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="runAdapt()" id="runAdaptBtn">Run Mode</button>
+            <button class="btn btn-primary" onclick="applyAdaptAndClose()" id="applyAdaptBtn"
+                style="display:none;background:#22c55e;">Apply Selected & Close</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    const API_BASE = "http://localhost:5001";
+
+    // Layers that must never be changed by any mode. Kept in sync with
+    // server.py > LOCKED_LAYERS — edits here only control the UI; the server
+    // is the source of truth. (Partner logo uses remoting-work-badge — not locked.)
+    const LOCKED_LAYERS = new Set();
+
+    // Default layer IDs for the three fixed brand slots. These match
+    // server.py > BRAND_ASSET_DEFAULTS.
+    const BRAND_ASSET_DEFAULT_IDS = {
+        logo:    "remoting-work-badge",
+        qr:      "qr-code",
+        website: "website-url",
+    };
+
+    // ─── State ──────────────────────────────────────────────
+    let allLayers = {};
+    let currentImageUrl = null;
+    let aiSuggestions = [];
+    let aiSelections = {};    // index -> 'ai' | 'original'
+    let aiEditedValues = {};  // index -> edited suggested text
+
+    // Font catalog (fetched lazily from /api/fonts). Every per-text-field
+    // font <select> is rebuilt from this data.
+    let availableFonts = [];        // [{ name, category, popularity, is_google, is_uploaded }, ...]
+    let fontsByCategory = {};       // category -> [name, ...]
+    let popularFonts = [];          // [name, ...]
+    let msFonts = [];               // [{ name, substitute }] — Arial, Calibri, Times New Roman, …
+    let fontsOptionsHtml = "";      // pre-rendered <optgroup>...</optgroup>... for reuse
+
+    // Pretty order for the category optgroups. "Other" last.
+    const FONT_CATEGORY_ORDER = ["Sans Serif", "Serif", "Display", "Handwriting", "Monospace", "Other"];
+
+    // ─── Init ───────────────────────────────────────────────
+    document.getElementById("templateIdDisplay").textContent = "(enter creds)";
+
+    const apiKeyEl = document.getElementById("apiKeyInput");
+    const templateIdEl = document.getElementById("templateIdInput");
+
+    function getCreds() {
+        return {
+            api_key: (apiKeyEl?.value || "").trim(),
+            template_id: (templateIdEl?.value || "").trim(),
+        };
+    }
+
+    function credHeaders() {
+        const c = getCreds();
+        return {
+            "X-Templated-Api-Key": c.api_key,
+            "X-Templated-Template-Id": c.template_id,
+        };
+    }
+
+    function applyCredsAndReload() {
+        const c = getCreds();
+        if (!c.api_key || !c.template_id) {
+            showToast("Enter both API key and Template ID first", "error");
+            return;
+        }
+        document.getElementById("templateIdDisplay").textContent = c.template_id;
+        fetchFonts();
+        fetchLayers();
+    }
+
+    fetchFonts();
+
+    async function fetchFonts() {
+        try {
+            const res = await fetch(`${API_BASE}/api/fonts`, { headers: credHeaders() });
+            if (!res.ok) return;
+            const data = await res.json();
+            availableFonts   = Array.isArray(data.fonts) ? data.fonts : [];
+            popularFonts     = Array.isArray(data.popular) ? data.popular : [];
+            msFonts          = Array.isArray(data.ms_fonts) ? data.ms_fonts : [];
+
+            fontsByCategory = {};
+            for (const f of availableFonts) {
+                const cat = f.category || "Other";
+                (fontsByCategory[cat] ||= []).push(f.name);
+            }
+            for (const names of Object.values(fontsByCategory)) names.sort((a, b) => a.localeCompare(b));
+
+            fontsOptionsHtml = buildFontOptionsHtml();
+            // Upgrade any font <select>s that were rendered before the catalog arrived.
+            for (const sel of document.querySelectorAll("select[data-font-layer]")) {
+                const layerId = sel.getAttribute("data-font-layer");
+                const current = sel.value;  // keep user's pick, incl. "" (default)
+                const search  = document.getElementById(`font_search_${layerId}`)?.value || "";
+                sel.innerHTML = buildFontOptionsHtmlWithCurrent(layerId, current, search);
+                sel.value = current;
+                if (search) filterFontsForLayer(layerId);  // updates count badge
+            }
+        } catch (_) { /* non-fatal; <select> falls back to just the template's current font */ }
+    }
+
+    /**
+     * Build the full <optgroup>...</optgroup> HTML for a font <select>.
+     * Groups are ordered for quick access:
+     *   1. Currently in this template
+     *   2. Popular (top ~20)
+     *   3. Microsoft fonts (Arial, Calibri, Times New Roman, …) — backend
+     *      silently substitutes each for its Google Fonts equivalent at render.
+     *   4. Sans Serif / Serif / Display / Handwriting / Monospace / Other
+     *
+     * @param currentInTemplate The layer's native font_family (pre-selected).
+     * @param currentValue      The select's current value (to preserve custom uploads).
+     * @param filter            Optional lowercase substring; options are dropped
+     *                          unless their name matches. Empty groups are omitted.
+     */
+    function buildFontOptionsHtml(currentInTemplate = null, currentValue = null, filter = "") {
+        const f = (filter || "").toLowerCase().trim();
+        const match = (name) => !f || name.toLowerCase().includes(f);
+
+        const parts = [];
+        if (!f) parts.push(`<option value="">(default)</option>`);
+
+        if (currentInTemplate && match(currentInTemplate)) {
+            parts.push(`<optgroup label="Currently in template">` +
+                       `<option value="${escapeHtml(currentInTemplate)}">${escapeHtml(currentInTemplate)}</option>` +
+                       `</optgroup>`);
+        }
+
+        if (popularFonts.length) {
+            const hits = popularFonts.filter(match);
+            if (hits.length) {
+                parts.push(`<optgroup label="Popular">` +
+                    hits.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("") +
+                    `</optgroup>`);
+            }
+        }
+
+        if (msFonts.length) {
+            // Match on both the MS name (Arial) and the substitute (Arimo) so
+            // searching either term finds it.
+            const hits = msFonts.filter(x => match(x.name) || match(x.substitute || ""));
+            if (hits.length) {
+                parts.push(`<optgroup label="Microsoft fonts (auto-substituted)">` +
+                    hits.map(x =>
+                        `<option value="${escapeHtml(x.name)}" title="Rendered as ${escapeHtml(x.substitute)}">` +
+                        `${escapeHtml(x.name)} → ${escapeHtml(x.substitute)}` +
+                        `</option>`
+                    ).join("") +
+                    `</optgroup>`);
+            }
+        }
+
+        for (const cat of FONT_CATEGORY_ORDER) {
+            const names = fontsByCategory[cat];
+            if (!names || !names.length) continue;
+            const hits = f ? names.filter(match) : names;
+            if (!hits.length) continue;
+            const label = f
+                ? `${cat} (${hits.length})`
+                : `${cat} (${names.length})`;
+            parts.push(`<optgroup label="${escapeHtml(label)}">` +
+                hits.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("") +
+                `</optgroup>`);
+        }
+
+        // If the caller's currentValue isn't in the catalog (custom upload,
+        // typo in the template, etc.), add it at the top so it doesn't silently
+        // disappear from the dropdown.
+        if (!f && currentValue && !availableFonts.some(ff => ff.name === currentValue)
+            && !msFonts.some(x => x.name === currentValue)
+            && currentValue !== currentInTemplate) {
+            parts.unshift(`<optgroup label="Custom / unknown">` +
+                `<option value="${escapeHtml(currentValue)}">${escapeHtml(currentValue)}</option>` +
+                `</optgroup>`);
+        }
+
+        return parts.join("") || `<option value="" disabled>(no matches)</option>`;
+    }
+
+    function buildFontOptionsHtmlWithCurrent(layerId, currentValue, filter = "") {
+        const layer = allLayers[layerId];
+        const currentInTemplate = layer?.font_family || null;
+        return buildFontOptionsHtml(currentInTemplate, currentValue, filter);
+    }
+
+    /**
+     * Live-filter the font <select> for one layer as the user types in the
+     * search box. Preserves the current selection whenever possible.
+     */
+    function filterFontsForLayer(layerId) {
+        const searchEl = document.getElementById(`font_search_${layerId}`);
+        const selectEl = document.getElementById(`font_${layerId}`);
+        const countEl  = document.getElementById(`font_count_${layerId}`);
+        if (!searchEl || !selectEl) return;
+        const filter = searchEl.value;
+        const current = selectEl.value;
+        selectEl.innerHTML = buildFontOptionsHtmlWithCurrent(layerId, current, filter);
+        // Try to keep the old selection if it's still present.
+        const stillThere = Array.from(selectEl.options).some(o => o.value === current);
+        if (stillThere) {
+            selectEl.value = current;
+        } else if (filter && selectEl.options.length) {
+            // Auto-pick the first match so the preview updates sensibly.
+            const firstPick = Array.from(selectEl.options).find(o => o.value && !o.disabled);
+            if (firstPick) {
+                selectEl.value = firstPick.value;
+                onFontFieldChange(layerId);
+            }
+        }
+        if (countEl) {
+            if (!filter) {
+                countEl.textContent = "";
+            } else {
+                // Count real pickable options (ignore "(default)" / "(no matches)")
+                const n = Array.from(selectEl.options).filter(o => o.value && !o.disabled).length;
+                countEl.textContent = n === 1 ? "1 match" : `${n} matches`;
+            }
+        }
+    }
+
+    // ─── Fetch template layers ───────────────────────────────
+    async function fetchLayers() {
+        try {
+            const res = await fetch(`${API_BASE}/api/layers`, { headers: credHeaders() });
+            if (!res.ok) throw new Error(await res.text());
+            const pages = await res.json();
+            buildEditor(pages);
+            loadCurrentPreview();
+        } catch (err) {
+            document.getElementById("fieldsPanel").innerHTML =
+                `<div style="color:#ef4444;padding:20px">Failed to load: ${err.message}</div>`;
+        }
+    }
+
+    // ─── Build LEFT panel with layer fields ─────────────────
+    function buildEditor(pages) {
+        const panel = document.getElementById("fieldsPanel");
+        panel.innerHTML = "";
+
+        for (const page of pages) {
+            for (const [layerId, layer] of Object.entries(page.layers)) {
+                allLayers[layerId] = { ...layer };
+            }
+        }
+
+        const textLayers  = Object.entries(allLayers).filter(([, l]) => l.text !== undefined && l.text !== null);
+        const imgLayers   = Object.entries(allLayers).filter(([, l]) => l.image_url !== undefined && l.image_url !== null);
+        const shapeLayers = Object.entries(allLayers).filter(([, l]) => l.fill !== undefined && l.fill !== null);
+
+        if (textLayers.length) {
+            panel.innerHTML += `<div class="panel-title">Text Layers</div><div class="field-section" id="textSection"></div>`;
+            for (const [id, layer] of textLayers) {
+                document.getElementById("textSection").appendChild(makeTextField(id, layer));
+            }
+        }
+        if (imgLayers.length) {
+            panel.innerHTML += `<div class="panel-title" style="margin-top:8px">Image Layers</div><div class="field-section" id="imageSection"></div>`;
+            for (const [id, layer] of imgLayers) {
+                document.getElementById("imageSection").appendChild(makeImageField(id, layer));
+            }
+        }
+        if (shapeLayers.length) {
+            panel.innerHTML += `<div class="panel-title" style="margin-top:8px">Shape Layers</div><div class="field-section" id="shapeSection"></div>`;
+            for (const [id, layer] of shapeLayers) {
+                document.getElementById("shapeSection").appendChild(makeShapeField(id, layer));
+            }
+        }
+
+        document.getElementById("statusText").textContent =
+            `${textLayers.length} text · ${imgLayers.length} image · ${shapeLayers.length} shape layers loaded`;
+    }
+
+    // ─── Field builders ─────────────────────────────────────
+    const WEIGHT_OPTIONS = ["normal","bold","100","200","300","400","500","600","700","800","900"];
+
+    function stripPx(v)   { return (v == null ? "" : String(v)).replace(/px$/i, "").trim(); }
+    function asPx(v)      { const s = stripPx(v); return s ? `${s}px` : ""; }
+    function rgbaToHex(c) {
+        if (!c) return "#000000";
+        if (c.startsWith("#")) return c;
+        const m = c.match(/\d+(\.\d+)?/g);
+        if (!m || m.length < 3) return "#000000";
+        return "#" + m.slice(0, 3).map(n => parseInt(n).toString(16).padStart(2, "0")).join("");
+    }
+    function hexToRgba(hex, alpha = 1) {
+        const m = (hex || "").replace("#","").match(/\w{2}/g);
+        if (!m || m.length < 3) return "rgba(0,0,0,1)";
+        return `rgba(${parseInt(m[0],16)},${parseInt(m[1],16)},${parseInt(m[2],16)},${alpha})`;
+    }
+    function alphaFromRgba(c) {
+        if (!c || c.startsWith("#")) return 1;
+        const m = c.match(/rgba?\(([^)]+)\)/i);
+        if (!m) return 1;
+        const parts = m[1].split(",").map(s => s.trim());
+        return parts.length >= 4 ? parseFloat(parts[3]) : 1;
+    }
+
+    function makeTextField(id, layer) {
+        const current = layer.text || "";
+        const family = layer.font_family || "";
+        const weight = layer.font_weight || "";
+        const sizeNum = stripPx(layer.font_size);
+        const colorHex = rgbaToHex(layer.color);
+        const badge = [family, weight && `· ${weight}`, sizeNum && `· ${sizeNum}px`].filter(Boolean).join(" ");
+
+        const weightOpts = ["", ...WEIGHT_OPTIONS]
+            .map(w => `<option value="${w}" ${w === (weight || "") ? "selected" : ""}>${w || "(default)"}</option>`)
+            .join("");
+
+        const div = document.createElement("div");
+        div.className = "field-group";
+        div.innerHTML = `
+            <div class="field-label">
+                ${humanize(id)}
+                <span class="layer-id">${id}</span>
+            </div>
+            <textarea class="field-input text-input"
+                id="txt_${id}"
+                placeholder="Enter text... (use &lt;br&gt; for line break)"
+                rows="2">${escapeHtml(current)}</textarea>
+
+            <details class="font-details">
+                <summary>
+                    <span class="aa">Aa</span>Font &amp; style
+                    ${badge ? `<span class="font-badge" id="fontbadge_${id}">${escapeHtml(badge)}</span>` : ""}
+                </summary>
+                <div class="font-grid">
+                    <div class="font-family-cell">
+                        <label for="font_${id}">Font family</label>
+                        <div class="font-search-row">
+                            <input type="search" id="font_search_${id}"
+                                placeholder="Search 1,900+ fonts (Arial, Calibri, Roboto, …)"
+                                oninput="filterFontsForLayer('${id}')"
+                                autocomplete="off">
+                            <span class="font-count" id="font_count_${id}"></span>
+                        </div>
+                        <div class="font-select-wrap">
+                            <select id="font_${id}" data-font-layer="${id}"
+                                size="1"
+                                onchange="onFontFieldChange('${id}')">
+                                ${buildFontOptionsHtmlWithCurrent(id, family)}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="font-extras">
+                        <div>
+                            <label for="weight_${id}">Weight</label>
+                            <select id="weight_${id}" onchange="onFontFieldChange('${id}')">${weightOpts}</select>
+                        </div>
+                        <div>
+                            <label for="size_${id}">Size (px)</label>
+                            <input type="number" id="size_${id}" min="1" step="1"
+                                value="${escapeHtml(sizeNum)}"
+                                oninput="onFontFieldChange('${id}')">
+                        </div>
+                        <div>
+                            <label for="color_text_${id}">Color</label>
+                            <input type="color" id="color_text_${id}"
+                                value="${colorHex}"
+                                oninput="onFontFieldChange('${id}')">
+                        </div>
+                        <button type="button" class="font-reset" onclick="resetFontForLayer('${id}')">reset to template default</button>
+                    </div>
+                </div>
+            </details>
+        `;
+        return div;
+    }
+
+    // Keep the summary badge in sync with the current form values so users see
+    // their changes at a glance without expanding the block.
+    function onFontFieldChange(id) {
+        const badge = document.getElementById(`fontbadge_${id}`);
+        if (!badge) return;
+        const fam  = document.getElementById(`font_${id}`)?.value.trim() || "";
+        const wt   = document.getElementById(`weight_${id}`)?.value.trim() || "";
+        const sz   = document.getElementById(`size_${id}`)?.value.trim() || "";
+        badge.textContent = [fam, wt && `· ${wt}`, sz && `· ${sz}px`].filter(Boolean).join(" ");
+    }
+
+    function resetFontForLayer(id) {
+        const layer = allLayers[id];
+        if (!layer) return;
+        const setIf = (elId, v) => { const el = document.getElementById(elId); if (el) el.value = v ?? ""; };
+
+        // Clear the search box and rebuild the full options list so the layer's
+        // original font is findable and selected.
+        const searchEl = document.getElementById(`font_search_${id}`);
+        if (searchEl) searchEl.value = "";
+        const selectEl = document.getElementById(`font_${id}`);
+        if (selectEl) {
+            selectEl.innerHTML = buildFontOptionsHtmlWithCurrent(id, layer.font_family || "");
+        }
+
+        setIf(`font_${id}`,       layer.font_family || "");
+        setIf(`weight_${id}`,     layer.font_weight || "");
+        setIf(`size_${id}`,       stripPx(layer.font_size));
+        setIf(`color_text_${id}`, rgbaToHex(layer.color));
+        const countEl = document.getElementById(`font_count_${id}`);
+        if (countEl) countEl.textContent = "";
+        onFontFieldChange(id);
+        showToast(`Font for "${humanize(id)}" reset`, "success");
+    }
+
+    function makeImageField(id, layer) {
+        const current = layer.image_url || "";
+        const w = Number(layer.width) || 0;
+        const h = Number(layer.height) || 0;
+        const ratio = (w && h) ? (w / h).toFixed(2) : "";
+        const slotBadge = (w && h)
+            ? `<span class="slot-size" title="Original slot size in the template">${w}\u00d7${h}px \u00b7 ${ratio}:1</span>`
+            : "";
+
+        // Default fit: respect the layer's existing object_fit; otherwise 'contain'
+        // so logos/badges never overflow their slot.
+        const fit = (layer.object_fit || "contain").toLowerCase();
+        const fitOpts = [
+            ["contain",    "Contain \u2014 fit inside, keep ratio (best for logos)"],
+            ["cover",      "Cover \u2014 fill slot, may crop"],
+            ["fill",       "Stretch \u2014 fill slot, may distort"],
+            ["scale-down", "Scale down \u2014 shrink only if larger"],
+        ].map(([v, lbl]) => `<option value="${v}" ${fit === v ? "selected" : ""}>${lbl}</option>`).join("");
+
+        const div = document.createElement("div");
+        div.className = "field-group";
+        div.innerHTML = `
+            <div class="field-label">
+                ${humanize(id)}
+                <span class="layer-id">${id}</span>
+                ${slotBadge}
+            </div>
+            <div class="image-url-row">
+                <input class="field-input" id="img_${id}"
+                    placeholder="Paste image URL..." value="${escapeHtml(current)}"
+                    onblur="onImageUrlBlur('${id}')">
+                <button class="btn-sm" onclick="previewImageUrl('${id}')" title="Resize and preview">👁</button>
+            </div>
+            <div class="image-fit-row" title="Server-side resize: choose how the image is fit into its slot, then the backend composites it at exact slot pixels and hosts the result on Templated.">
+                <label for="fit_${id}">Fit</label>
+                <select id="fit_${id}" onchange="onImageFitChange(this, '${id}')">${fitOpts}</select>
+                <span class="fit-status" id="fitstatus_${id}"></span>
+            </div>
+            <img class="image-preview-thumb" id="thumb_${id}"
+                src="${escapeHtml(current)}"
+                onerror="this.style.display='none'"
+                style="display:${current ? 'block' : 'none'}">
+        `;
+        return div;
+    }
+
+    function makeShapeField(id, layer) {
+        const current = layer.fill || "rgb(0,0,0)";
+        const div = document.createElement("div");
+        div.className = "field-group";
+        div.innerHTML = `
+            <div class="field-label">
+                ${humanize(id)}
+                <span class="layer-id">${id}</span>
+            </div>
+            <div class="color-row">
+                <input type="color" id="color_${id}" value="${rgbToHex(current)}"
+                    oninput="updateColorText('${id}', this.value)">
+                <input class="field-input" id="fill_${id}"
+                    value="${escapeHtml(current)}"
+                    placeholder="rgb(0,0,0) or #000000">
+            </div>
+        `;
+        return div;
+    }
+
+    // ─── Helpers ────────────────────────────────────────────
+    function humanize(id) {
+        return id.replace(/-/g, " ").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function escapeHtml(str) {
+        if (!str) return "";
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
+    function rgbToHex(rgb) {
+        if (!rgb || rgb.startsWith("#")) return "#000000";
+        const m = rgb.match(/\d+/g);
+        if (!m || m.length < 3) return "#000000";
+        return "#" + m.slice(0, 3).map(v => parseInt(v).toString(16).padStart(2, "0")).join("");
+    }
+
+    function hexToRgb(hex) {
+        const m = hex.match(/\w{2}/g);
+        if (!m) return "rgb(0,0,0)";
+        return `rgb(${parseInt(m[0], 16)},${parseInt(m[1], 16)},${parseInt(m[2], 16)})`;
+    }
+
+    function updateColorText(id, hexVal) {
+        const textInput = document.getElementById(`fill_${id}`);
+        if (textInput) textInput.value = hexToRgb(hexVal);
+    }
+
+    // Track per-layer fit state. We must remember the USER-PROVIDED source URL
+    // separately from the hosted/fitted URL that we write back into the input,
+    // so that changing the Fit dropdown re-fits from the original pixels and
+    // not from the already-letterboxed output of a previous fit.
+    const fitResults = {};   // layer_id -> { source, fit, hosted }
+    const sourceUrls = {};   // layer_id -> last source URL the user provided
+    const fitPromises = {};  // layer_id -> in-flight fit Promise (for race-free awaiting)
+
+    function setFitStatus(layerId, state, msg) {
+        const el = document.getElementById(`fitstatus_${layerId}`);
+        if (!el) return;
+        const labels = { idle: "", loading: "resizing…", ok: "✓ fitted", error: "! " + (msg || "error") };
+        const colors = { idle: "#888",    loading: "#60a5fa",   ok: "#22c55e", error: "#ef4444" };
+        el.textContent = labels[state] || "";
+        el.style.color = colors[state] || "#888";
+    }
+
+    /**
+     * Ask the backend to resize ``sourceUrl`` to fit this layer's slot and host
+     * it on Templated. On success we swap the URL input and the thumbnail to
+     * the server-returned asset — the frontend never touches image math.
+     *
+     * Returns the new hosted URL (or null on failure).
+     */
+    async function fitImageForLayer(layerId, sourceUrl, fit) {
+        if (!sourceUrl) return null;
+        sourceUrls[layerId] = sourceUrl;
+        fit = fit || "contain";
+
+        const cached = fitResults[layerId];
+        if (cached && cached.source === sourceUrl && cached.fit === fit) {
+            const imgEl = document.getElementById(`img_${layerId}`);
+            if (imgEl && imgEl.value !== cached.hosted) imgEl.value = cached.hosted;
+            return cached.hosted;
+        }
+
+        // If another fit is in flight for this layer, wait for it to finish
+        // before deciding whether a fresh request is still needed (prevents
+        // lost updates when the user pastes + hits Generate immediately).
+        if (fitPromises[layerId]) {
+            try { await fitPromises[layerId]; } catch (_) { /* ignore */ }
+            const latest = fitResults[layerId];
+            if (latest && latest.source === sourceUrl && latest.fit === fit) {
+                return latest.hosted;
+            }
+        }
+
+        const job = (async () => {
+            setFitStatus(layerId, "loading");
+            try {
+                const res = await fetch("/api/fit-image", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ url: sourceUrl, layer_id: layerId, object_fit: fit }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.image_url) {
+                    setFitStatus(layerId, "error", data.error || `HTTP ${res.status}`);
+                    return null;
+                }
+                const imgEl = document.getElementById(`img_${layerId}`);
+                const thumb = document.getElementById(`thumb_${layerId}`);
+                if (imgEl) imgEl.value = data.image_url;
+                if (thumb) {
+                    thumb.src = data.data_url || data.image_url;
+                    thumb.style.display = "block";
+                    thumb.onerror = () => thumb.style.display = "none";
+                }
+                fitResults[layerId] = { source: sourceUrl, fit, hosted: data.image_url };
+                setFitStatus(layerId, "ok");
+                return data.image_url;
+            } catch (e) {
+                setFitStatus(layerId, "error", String(e));
+                return null;
+            }
+        })();
+
+        fitPromises[layerId] = job;
+        try {
+            return await job;
+        } finally {
+            if (fitPromises[layerId] === job) delete fitPromises[layerId];
+        }
+    }
+
+    function previewImageUrl(layerId) {
+        const input = (document.getElementById(`img_${layerId}`).value || "").trim();
+        if (!input) return;
+        const prev = fitResults[layerId];
+        // If the input currently holds a hosted URL from a prior fit, reuse
+        // the matching source URL; otherwise treat the input as a new source.
+        const source = (prev && prev.hosted === input) ? prev.source : input;
+        const fit = document.getElementById(`fit_${layerId}`)?.value || "contain";
+        fitImageForLayer(layerId, source, fit);
+    }
+
+    // Called when the URL input loses focus. Only refit when the URL actually
+    // changed — if the input still holds our last hosted URL, do nothing.
+    function onImageUrlBlur(layerId) {
+        const current = (document.getElementById(`img_${layerId}`).value || "").trim();
+        if (!current) return;
+        const prev = fitResults[layerId];
+        if (prev && current === prev.hosted) return;  // unchanged hosted URL
+        const fit = document.getElementById(`fit_${layerId}`)?.value || "contain";
+        fitImageForLayer(layerId, current, fit);
+    }
+
+    // Called when the Fit dropdown changes — re-fit from the ORIGINAL source
+    // (never from the already-letterboxed hosted output).
+    function onImageFitChange(selectEl, layerId) {
+        selectEl.dataset.userSet = "1";
+        const prev = fitResults[layerId];
+        const input = (document.getElementById(`img_${layerId}`).value || "").trim();
+        const source = sourceUrls[layerId]
+            || (prev && prev.hosted === input ? prev.source : input);
+        if (source) fitImageForLayer(layerId, source, selectEl.value);
+    }
+
+    // ─── Collect layers for render ──────────────────────────
+    function collectTextFontOverrides(id, layer) {
+        /**
+         * Pull font controls from the DOM and include only the fields the user
+         * actually changed. Returning the originals unchanged keeps the render
+         * payload minimal and avoids accidentally overriding template defaults
+         * with empty strings / stale values.
+         */
+        const out = {};
+        const fam = document.getElementById(`font_${id}`)?.value.trim();
+        if (fam && fam !== (layer.font_family || "")) out.font_family = fam;
+
+        const wt = document.getElementById(`weight_${id}`)?.value;
+        if (wt && wt !== (layer.font_weight || "")) out.font_weight = wt;
+
+        const sz = document.getElementById(`size_${id}`)?.value.trim();
+        if (sz) {
+            const newSize = `${sz}px`;
+            if (newSize !== (layer.font_size || "")) out.font_size = newSize;
+        }
+
+        const hex = document.getElementById(`color_text_${id}`)?.value;
+        if (hex) {
+            const alpha = alphaFromRgba(layer.color);
+            const nextRgba = hexToRgba(hex, alpha);
+            if (rgbaToHex(layer.color) !== hex) out.color = nextRgba;
+        }
+        return out;
+    }
+
+    function collectLayers() {
+        const layers = {};
+        for (const [id, layer] of Object.entries(allLayers)) {
+            if (layer.text !== undefined && layer.text !== null) {
+                const val = document.getElementById(`txt_${id}`)?.value;
+                if (val !== undefined) {
+                    layers[id] = { text: val, ...collectTextFontOverrides(id, layer) };
+                }
+            } else if (layer.image_url !== undefined && layer.image_url !== null) {
+                const val = document.getElementById(`img_${id}`)?.value;
+                if (val) {
+                    const entry = { image_url: val };
+                    // If the backend already fitted this image to exact slot
+                    // pixels, ask Templated to draw it 1:1 ('fill') and skip
+                    // any further implicit scaling. Layers the user never
+                    // touched fall through without object_fit so they keep
+                    // the template's original rendering.
+                    const prev = fitResults[id];
+                    if (prev && prev.hosted === val) entry.object_fit = "fill";
+                    layers[id] = entry;
+                }
+            } else if (layer.fill !== undefined && layer.fill !== null) {
+                const val = document.getElementById(`fill_${id}`)?.value;
+                if (val) layers[id] = { fill: val };
+            }
+        }
+        return layers;
+    }
+
+    // ─── AI Modal ───────────────────────────────────────────
+    function openAiModal() {
+        document.getElementById("aiOverlay").classList.add("open");
+        document.getElementById("aiModalBody").innerHTML = `
+            <div class="ai-loading">
+                <div class="spinner" style="margin:0 auto"></div>
+                <p>Click "Load AI Suggestions" to analyze your template text</p>
+            </div>`;
+        document.getElementById("loadAiBtn").style.display = "";
+        document.getElementById("applyAiBtn").style.display = "none";
+    }
+
+    function closeAiModal() {
+        document.getElementById("aiOverlay").classList.remove("open");
+    }
+
+    function closeAiModalOnOverlay(e) {
+        if (e.target === document.getElementById("aiOverlay")) closeAiModal();
+    }
+
+    async function loadAiSuggestions() {
+        const body = document.getElementById("aiModalBody");
+        body.innerHTML = `
+            <div class="ai-loading">
+                <div class="spinner" style="margin:0 auto"></div>
+                <p>Gemini is analyzing your template text...</p>
+            </div>`;
+        document.getElementById("loadAiBtn").style.display = "none";
+
+        // Build text_layers from current field values
+        const text_layers = {};
+        for (const [id, layer] of Object.entries(allLayers)) {
+            if (layer.text !== undefined && layer.text !== null) {
+                const el = document.getElementById(`txt_${id}`);
+                text_layers[id] = el ? el.value : (layer.text || "");
+            }
+        }
+
+        if (Object.keys(text_layers).length === 0) {
+            body.innerHTML = `<div class="ai-empty"><p>No text layers found.</p></div>`;
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE}/api/marketing-text`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text_layers }),
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            aiSuggestions = data.suggestions || [];
+            aiSelections = {};
+            aiEditedValues = {};
+            const lv = data.layout_validation || {};
+            let droppedN = 0;
+            if (lv.dropped_initial) droppedN += lv.dropped_initial.length;
+            if (lv.dropped_after_repair) droppedN += lv.dropped_after_repair.length;
+            if (droppedN) {
+                showToast(
+                    `Design guard: ${droppedN} AI suggestion(s) removed because word count did not match the template (protects layout).`,
+                    "error"
+                );
+            }
+            renderAiCards(aiSuggestions);
+            document.getElementById("applyAiBtn").style.display = "";
+        } catch (err) {
+            body.innerHTML = `<div class="ai-empty"><p style="color:#ef4444">Error: ${err.message}</p></div>`;
+            document.getElementById("loadAiBtn").style.display = "";
+        }
+    }
+
+    function renderAiCards(suggestions) {
+        const body = document.getElementById("aiModalBody");
+
+        if (!suggestions.length) {
+            body.innerHTML = `<div class="ai-empty">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+                <p>All text looks great — no changes suggested.</p>
+            </div>`;
+            return;
+        }
+
+        body.innerHTML = suggestions.map((s, i) => {
+            const origWords = (s.current_text || '').split(/\s+/).filter(Boolean).length;
+            const sugWords = (s.suggested_text || '').split(/\s+/).filter(Boolean).length;
+            const match = origWords === sugWords;
+            const matchClass = match ? "ok" : "bad";
+            const matchLabel = match ? `✓ ${sugWords} words` : `✗ ${sugWords} vs ${origWords} words`;
+
+            aiSelections[i] = 'ai';
+            aiEditedValues[i] = s.suggested_text;
+
+            return `
+            <div class="scard selected" id="scard_${i}">
+                <div class="scard-header">
+                    <span class="scard-layer">${humanize(s.layer_id)}</span>
+                    <span class="scard-words ${matchClass}">${matchLabel}</span>
+                </div>
+                <div class="scard-row">
+                    <div class="scard-col">
+                        <label>✕ Original</label>
+                        <div class="scard-col original-text">${escapeHtml(s.current_text)}</div>
+                    </div>
+                    <div class="scard-col ai-text">
+                        <label>✦ AI Suggestion</label>
+                        <textarea rows="2" id="scard_ta_${i}"
+                            oninput="handleAiEdit(${i}, this.value)">${escapeHtml(s.suggested_text)}</textarea>
+                    </div>
+                </div>
+                <div class="scard-reason">${escapeHtml(s.reason)}</div>
+                <div class="scard-actions">
+                    <label id="scard_ai_lbl_${i}" class="ai-selected">
+                        <input type="radio" name="scard_radio_${i}"
+                            id="scard_ai_${i}" checked
+                            onchange="handleCardSelect(${i}, 'ai')">
+                        Use AI suggestion
+                    </label>
+                    <label id="scard_orig_lbl_${i}">
+                        <input type="radio" name="scard_radio_${i}"
+                            id="scard_orig_${i}"
+                            onchange="handleCardSelect(${i}, 'original')">
+                        Keep original
+                    </label>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function handleAiEdit(index, value) {
+        aiEditedValues[index] = value;
+        aiSelections[index] = 'ai';
+        const origRadio = document.getElementById(`scard_orig_${index}`);
+        const aiRadio = document.getElementById(`scard_ai_${index}`);
+        const origLbl = document.getElementById(`scard_orig_lbl_${index}`);
+        const aiLbl = document.getElementById(`scard_ai_lbl_${index}`);
+        if (aiRadio) aiRadio.checked = true;
+        if (origRadio) origRadio.checked = false;
+        if (aiLbl) aiLbl.classList.add('ai-selected');
+        if (origLbl) origLbl.classList.remove('ai-selected');
+    }
+
+    function handleCardSelect(index, type) {
+        aiSelections[index] = type;
+        const aiLbl = document.getElementById(`scard_ai_lbl_${index}`);
+        const origLbl = document.getElementById(`scard_orig_lbl_${index}`);
+        const card = document.getElementById(`scard_${index}`);
+        if (type === 'ai') {
+            if (aiLbl) aiLbl.classList.add('ai-selected');
+            if (origLbl) origLbl.classList.remove('ai-selected');
+            if (card) card.classList.add('selected');
+            const ta = document.getElementById(`scard_ta_${index}`);
+            if (ta && aiEditedValues[index]) ta.value = aiEditedValues[index];
+        } else {
+            if (origLbl) origLbl.classList.add('ai-selected');
+            if (aiLbl) aiLbl.classList.remove('ai-selected');
+            if (card) card.classList.remove('selected');
+        }
+    }
+
+    function applyAiAndClose() {
+        let applied = 0;
+        aiSuggestions.forEach((s, i) => {
+            if (aiSelections[i] !== 'ai') return;
+            const finalText = aiEditedValues[i] || s.suggested_text;
+            const field = document.getElementById(`txt_${s.layer_id}`);
+            if (field) {
+                field.value = finalText;
+                applied++;
+            }
+        });
+        showToast(`Applied ${applied} AI suggestion${applied !== 1 ? 's' : ''} to template`, "success");
+        closeAiModal();
+    }
+
+    // ─── Render ─────────────────────────────────────────────
+    /**
+     * Before rendering, make sure every image field the user touched has been
+     * fitted server-side. Layers the user never interacted with keep the
+     * template's default asset URL verbatim — we don't refit defaults.
+     *
+     * Also awaits any fit already in flight so races between paste/blur and
+     * Generate can't leave an un-fitted URL in the payload.
+     */
+    async function ensureAllImagesFitted() {
+        const jobs = [];
+        for (const [id, layer] of Object.entries(allLayers)) {
+            if (layer.image_url === undefined || layer.image_url === null) continue;
+            if (fitPromises[id]) { jobs.push(fitPromises[id]); continue; }
+            const source = sourceUrls[id];
+            if (!source) continue;  // user never touched this layer
+            const fit = document.getElementById(`fit_${id}`)?.value || "contain";
+            const prev = fitResults[id];
+            if (prev && prev.source === source && prev.fit === fit) continue;
+            jobs.push(fitImageForLayer(id, source, fit));
+        }
+        if (jobs.length) await Promise.all(jobs.map(p => p.catch(() => null)));
+    }
+
+    async function renderTemplate() {
+        const btn = document.getElementById("renderBtn");
+        const status = document.getElementById("statusText");
+        const preview = document.getElementById("previewContainer");
+        const downloadBtn = document.getElementById("downloadBtn");
+
+        const creds = getCreds();
+        if (!creds.api_key || !creds.template_id) {
+            showToast("Enter API key + Template ID, then click Load", "error");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = `<div class="spinner"></div>`;
+        status.className = "status";
+        status.textContent = "Resizing images…";
+        try { await ensureAllImagesFitted(); } catch (_) { /* fall through to render */ }
+        status.textContent = "Generating...";
+
+        const layers = collectLayers();
+
+        try {
+            const res = await fetch(`${API_BASE}/api/render`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ layers, ...creds }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || data.error || "Render failed");
+
+            currentImageUrl = data.url || data.render_url;
+            if (data.status !== "COMPLETED" && data.render_url) {
+                status.textContent = "Rendering in progress...";
+                currentImageUrl = data.render_url;
+            }
+
+            // Use proxy to avoid CORS
+            const previewSrc = `${API_BASE}/api/proxy-image?url=${encodeURIComponent(currentImageUrl)}`;
+            preview.innerHTML = `<img id="previewImg" src="${previewSrc}" alt="Preview">`;
+            document.getElementById("previewImg").onerror = () => {
+                status.textContent = "Image load error — try again";
+                status.className = "status error";
+            };
+
+            status.className = "status success";
+            status.textContent = `✅ Done — ${data.width}x${data.height}`;
+            downloadBtn.style.display = "";
+            showToast("Image generated successfully!", "success");
+        } catch (err) {
+            status.className = "status error";
+            status.textContent = `❌ ${err.message}`;
+            showToast(err.message, "error");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = "▶ Generate";
+        }
+    }
+
+    // ─── Download ────────────────────────────────────────────
+    async function downloadImage() {
+        if (!currentImageUrl) return;
+        const status = document.getElementById("statusText");
+        status.className = "status";
+        status.textContent = "Downloading...";
+        try {
+            const res = await fetch(
+                `${API_BASE}/api/proxy-image?url=${encodeURIComponent(currentImageUrl)}`
+            );
+            if (!res.ok) throw new Error("Proxy request failed");
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = blobUrl;
+            a.download = `nutrihealth-${Date.now()}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+            status.className = "status success";
+            status.textContent = "⬇ Download started";
+            showToast("Download started", "success");
+        } catch (err) {
+            window.open(currentImageUrl, "_blank");
+            status.textText = "Opened in new tab (download blocked by CORS)";
+            showToast("Opened in new tab instead", "error");
+        }
+    }
+
+    // ─── Load current preview ───────────────────────────────
+    async function loadCurrentPreview() {
+        try {
+            const res = await fetch(`${API_BASE}/api/render`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ layers: {} }),
+            });
+            const data = await res.json();
+            if (data.url || data.render_url) {
+                const url = data.url || data.render_url;
+                currentImageUrl = url;
+                // Use proxy to avoid CORS
+                const previewSrc = `${API_BASE}/api/proxy-image?url=${encodeURIComponent(url)}`;
+                document.getElementById("previewContainer").innerHTML =
+                    `<img id="previewImg" src="${previewSrc}" alt="Current preview">`;
+                document.getElementById("previewImg").onerror = () => {
+                    document.getElementById("previewContainer").innerHTML =
+                        `<div style="color:#ef4444;font-size:13px;padding:20px">Image failed to load</div>`;
+                };
+                document.getElementById("downloadBtn").style.display = "";
+                document.getElementById("statusText").className = "status success";
+                document.getElementById("statusText").textContent = "Current template preview loaded";
+            }
+        } catch (_) {}
+    }
+
+    // ─── Reset ────────────────────────────────────────────────
+    function resetAllFields() {
+        for (const [id, layer] of Object.entries(allLayers)) {
+            if (layer.text !== undefined && layer.text !== null) {
+                const el = document.getElementById(`txt_${id}`);
+                if (el) el.value = layer.text || "";
+            } else if (layer.image_url !== undefined && layer.image_url !== null) {
+                const el = document.getElementById(`img_${id}`);
+                if (el) el.value = layer.image_url || "";
+                const thumb = document.getElementById(`thumb_${id}`);
+                if (thumb) {
+                    if (layer.image_url) { thumb.src = layer.image_url; thumb.style.display = "block"; }
+                    else { thumb.style.display = "none"; }
+                }
+            } else if (layer.fill !== undefined && layer.fill !== null) {
+                const colorEl = document.getElementById(`color_${id}`);
+                const fillEl = document.getElementById(`fill_${id}`);
+                if (layer.fill) {
+                    if (colorEl) colorEl.value = rgbToHex(layer.fill);
+                    if (fillEl) fillEl.value = layer.fill;
+                }
+            }
+        }
+        showToast("All fields reset to original values", "success");
+    }
+
+    // ─── Adapt to Partner ───────────────────────────────────
+    let adaptResult = null;
+    let adaptTextSel = {};   // layer_id -> 'ai' | 'original'
+    let adaptTextEdit = {};  // layer_id -> edited suggested text
+    let adaptShapeSel = {};  // layer_id -> 'ai' | 'original'
+    let adaptImageSel = {};  // layer_id -> 'ai' | 'original'
+
+    let currentMode = "logo_qr_website_colors";
+
+    const ADAPT_MODE_LABEL = {
+        logo_qr_website_colors: "Logo, QR, website & colors",
+        ai_rewrite: "AI Rewrite (full)",
+        find_replace: "Find & Replace",
+        ai_with_rules: "AI with Rules",
+        image_only: "Swap image only",
+    };
+    let replaceRules = [];   // [{find, replace}]
+    let imageOverrides = []; // [{layer_id, url}]
+
+    function syncColorInput(colorInputId, textValue) {
+        const ci = document.getElementById(colorInputId);
+        if (!ci) return;
+        if (/^#[0-9a-fA-F]{6}$/.test(textValue)) ci.value = textValue.toLowerCase();
+    }
+
+    function openAdaptModal() {
+        document.getElementById("adaptOverlay").classList.add("open");
+        document.getElementById("adaptResults").innerHTML = "";
+        document.getElementById("briefForm").style.display = "";
+        document.getElementById("runAdaptBtn").style.display = "";
+        document.getElementById("applyAdaptBtn").style.display = "none";
+        populateBrandAssetDropdowns();
+        if (!replaceRules.length) { replaceRules = [{find: "", replace: ""}]; }
+        if (!imageOverrides.length) { imageOverrides = []; }
+        renderRulesList();
+        renderImageOverrideList();
+        selectMode(currentMode);
+    }
+
+    function closeAdaptModal() {
+        document.getElementById("adaptOverlay").classList.remove("open");
+    }
+
+    function closeAdaptModalOnOverlay(e) {
+        if (e.target === document.getElementById("adaptOverlay")) closeAdaptModal();
+    }
+
+    // ─── Brand-asset dropdowns ──────────────────────────────
+    function populateBrandAssetDropdowns() {
+        const textOpts  = [];
+        const imageOpts = [];
+        for (const [id, layer] of Object.entries(allLayers)) {
+            if (LOCKED_LAYERS.has(id)) continue; // never selectable
+            const label = `${humanize(id)}  —  ${id}`;
+            if (layer.text !== undefined && layer.text !== null) {
+                textOpts.push({ id, label });
+            } else if (layer.image_url !== undefined && layer.image_url !== null) {
+                imageOpts.push({ id, label });
+            }
+        }
+        const fill = (selectId, opts, defaultId) => {
+            const sel = document.getElementById(selectId);
+            if (!sel) return;
+            const keep = sel.value;
+            sel.innerHTML = `<option value="">(select layer)</option>` +
+                opts.map(o => `<option value="${o.id}">${escapeHtml(o.label)}</option>`).join("");
+            if (keep) {
+                sel.value = keep;
+            } else if (defaultId && opts.some(o => o.id === defaultId)) {
+                sel.value = defaultId;
+            }
+        };
+        fill("ba_logo_layer", imageOpts, BRAND_ASSET_DEFAULT_IDS.logo);
+        fill("ba_qr_layer",   imageOpts, BRAND_ASSET_DEFAULT_IDS.qr);
+        fill("ba_web_layer",  textOpts,  BRAND_ASSET_DEFAULT_IDS.website);
+    }
+
+    // ─── Mode picker ────────────────────────────────────────
+    function selectMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll(".mode-card").forEach(card => {
+            card.classList.toggle("active", card.dataset.mode === mode);
+        });
+
+        const briefWrap      = document.getElementById("partnerBriefWrap");
+        const colorsWrap     = document.getElementById("brandColorsWrap");
+        const colorsHint     = document.getElementById("brandColorsHint");
+        const rulesPanel     = document.getElementById("rulesPanel");
+        const imgPanel       = document.getElementById("imageOverridePanel");
+        const imgTitle       = document.getElementById("imageOverrideTitle");
+
+        const needsBrief     = (mode === "ai_rewrite" || mode === "ai_with_rules");
+        const showBrandColors = (mode === "logo_qr_website_colors" || mode === "ai_rewrite" || mode === "ai_with_rules");
+        const needsRules     = (mode === "find_replace" || mode === "ai_with_rules");
+        const imageOnly      = (mode === "image_only");
+
+        if (briefWrap) briefWrap.style.display = needsBrief ? "" : "none";
+        if (colorsWrap) colorsWrap.style.display = showBrandColors ? "" : "none";
+        if (colorsHint) {
+            if (mode === "logo_qr_website_colors") {
+                colorsHint.textContent = "Required — mapped to template shapes (no AI, instant)";
+            } else if (mode === "ai_rewrite" || mode === "ai_with_rules") {
+                colorsHint.textContent = "Also sent to AI with your partner brief";
+            } else {
+                colorsHint.textContent = "";
+            }
+        }
+        rulesPanel.style.display = needsRules ? "" : "none";
+        imgPanel.style.display   = "";
+        imgTitle.textContent = imageOnly
+            ? "Images to swap (required for this mode)"
+            : "Optional · Swap additional images";
+    }
+
+    // ─── Find/replace rule rows ─────────────────────────────
+    function renderRulesList() {
+        const list = document.getElementById("rulesList");
+        if (!list) return;
+        list.innerHTML = replaceRules.map((r, i) => `
+            <div class="rule-row">
+                <input placeholder="Find this text..." value="${escapeHtml(r.find)}"
+                    oninput="replaceRules[${i}].find = this.value">
+                <input placeholder="Replace with..." value="${escapeHtml(r.replace)}"
+                    oninput="replaceRules[${i}].replace = this.value">
+                <button class="rule-del" onclick="removeRuleRow(${i})">✕</button>
+            </div>
+        `).join("");
+    }
+    function addRuleRow() {
+        replaceRules.push({ find: "", replace: "" });
+        renderRulesList();
+    }
+    function removeRuleRow(i) {
+        replaceRules.splice(i, 1);
+        if (!replaceRules.length) replaceRules.push({ find: "", replace: "" });
+        renderRulesList();
+    }
+
+    // ─── Image override rows ────────────────────────────────
+    function imageLayerOptionsHtml(selectedId) {
+        const opts = [`<option value="">(select image layer)</option>`];
+        for (const [id, layer] of Object.entries(allLayers)) {
+            if (layer.image_url === undefined || layer.image_url === null) continue;
+            if (LOCKED_LAYERS.has(id)) continue; // protected brand constant
+            const sel = id === selectedId ? " selected" : "";
+            opts.push(`<option value="${id}"${sel}>${escapeHtml(humanize(id))} — ${escapeHtml(id)}</option>`);
+        }
+        return opts.join("");
+    }
+    function renderImageOverrideList() {
+        const list = document.getElementById("imageOverrideList");
+        if (!list) return;
+        list.innerHTML = imageOverrides.map((r, i) => `
+            <div class="img-override-row">
+                <select onchange="imageOverrides[${i}].layer_id = this.value">
+                    ${imageLayerOptionsHtml(r.layer_id)}
+                </select>
+                <input placeholder="https://example.com/new-image.jpg" value="${escapeHtml(r.url)}"
+                    oninput="imageOverrides[${i}].url = this.value">
+                <button class="rule-del" onclick="removeImageOverrideRow(${i})">✕</button>
+            </div>
+        `).join("");
+    }
+    function addImageOverrideRow() {
+        imageOverrides.push({ layer_id: "", url: "" });
+        renderImageOverrideList();
+    }
+    function removeImageOverrideRow(i) {
+        imageOverrides.splice(i, 1);
+        renderImageOverrideList();
+    }
+
+    function collectBrandAssets() {
+        return {
+            logo:    { layer_id: document.getElementById("ba_logo_layer").value,
+                       url:      document.getElementById("ba_logo_url").value.trim() },
+            qr:      { layer_id: document.getElementById("ba_qr_layer").value,
+                       url:      document.getElementById("ba_qr_url").value.trim() },
+            website: { layer_id: document.getElementById("ba_web_layer").value,
+                       text:     document.getElementById("ba_web_text").value.trim() },
+        };
+    }
+
+    function collectPartnerBrief() {
+        const name = document.getElementById("pb_name").value.trim();
+        return {
+            name,
+            partner_type: document.getElementById("pb_type").value || null,
+            industry:     document.getElementById("pb_industry").value.trim() || null,
+            audience:     document.getElementById("pb_audience").value.trim() || null,
+            goal:         document.getElementById("pb_goal").value.trim() || null,
+            tone_hints:   document.getElementById("pb_tone").value.trim() || null,
+            link_url:     document.getElementById("pb_link").value.trim() || null,
+            brand_colors: {
+                primary: document.getElementById("pb_primary").value.trim() || null,
+                accent:  document.getElementById("pb_accent").value.trim()  || null,
+            },
+            notes: document.getElementById("pb_notes").value.trim() || null,
+        };
+    }
+
+    function collectAllLayerSnapshots() {
+        const text_layers = {};
+        const shape_layers = {};
+        const image_layers = {};
+        for (const [id, layer] of Object.entries(allLayers)) {
+            if (layer.text !== undefined && layer.text !== null) {
+                const el = document.getElementById(`txt_${id}`);
+                text_layers[id] = el ? el.value : (layer.text || "");
+            } else if (layer.image_url !== undefined && layer.image_url !== null) {
+                const el = document.getElementById(`img_${id}`);
+                image_layers[id] = el ? el.value : (layer.image_url || "");
+            } else if (layer.fill !== undefined && layer.fill !== null) {
+                const el = document.getElementById(`fill_${id}`);
+                shape_layers[id] = el ? el.value : (layer.fill || "");
+            }
+        }
+        return { text_layers, shape_layers, image_layers };
+    }
+
+    async function runAdapt() {
+        const { text_layers, shape_layers, image_layers } = collectAllLayerSnapshots();
+        const brand_assets = collectBrandAssets();
+        const brief = collectPartnerBrief();
+
+        // Mode-specific validation up front (cheaper than a round-trip).
+        const aiModes = new Set(["ai_rewrite", "ai_with_rules"]);
+        if (aiModes.has(currentMode) && !brief.name) {
+            showToast("Enter the partner name for this mode", "error");
+            return;
+        }
+        if (currentMode === "logo_qr_website_colors") {
+            if (!brand_assets.logo.layer_id || !brand_assets.qr.layer_id || !brand_assets.website.layer_id) {
+                showToast("Select logo, QR, and website layers in the dropdowns", "error");
+                return;
+            }
+            if (!brand_assets.logo.url || !brand_assets.qr.url || !brand_assets.website.text) {
+                showToast("Fill in logo URL, QR URL, and website link text", "error");
+                return;
+            }
+            const pri = document.getElementById("pb_primary").value.trim();
+            const acc = document.getElementById("pb_accent").value.trim();
+            if (!pri || !acc) {
+                showToast("Choose primary and accent brand colors", "error");
+                return;
+            }
+        }
+        const rulesFilled = replaceRules.filter(r => (r.find || "").trim());
+        if ((currentMode === "find_replace" || currentMode === "ai_with_rules") && !rulesFilled.length) {
+            showToast("Add at least one find → replace rule for this mode", "error");
+            return;
+        }
+        const overridesFilled = imageOverrides.filter(r => r.layer_id && r.url);
+        const anyBrandImage = brand_assets.logo.url || brand_assets.qr.url;
+        if (currentMode === "image_only" && !overridesFilled.length && !anyBrandImage) {
+            showToast("Provide at least one image URL (logo, QR, or an override)", "error");
+            return;
+        }
+
+        const body = document.getElementById("adaptResults");
+        document.getElementById("briefForm").style.display = "none";
+        document.getElementById("runAdaptBtn").style.display = "none";
+        const modeLabel = escapeHtml(ADAPT_MODE_LABEL[currentMode] || humanize(currentMode));
+        body.innerHTML = `
+            <div class="ai-loading">
+                <div class="spinner" style="margin:0 auto"></div>
+                <p>Running <b>${modeLabel}</b>${currentMode === "logo_qr_website_colors" ? " — no AI, should finish in a second" : ""}...</p>
+            </div>`;
+
+        const payload = {
+            mode: currentMode,
+            partner_brief: brief,
+            brand_colors: {
+                primary: document.getElementById("pb_primary").value.trim(),
+                accent:  document.getElementById("pb_accent").value.trim(),
+            },
+            text_layers, shape_layers, image_layers,
+            replace_rules: rulesFilled,
+            image_overrides: Object.fromEntries(overridesFilled.map(r => [r.layer_id, r.url])),
+            brand_assets,
+        };
+
+        try {
+            const res = await fetch(`${API_BASE}/api/adapt`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Adapt failed");
+            adaptResult = data;
+            adaptTextSel = {};
+            adaptTextEdit = {};
+            adaptShapeSel = {};
+            adaptImageSel = {};
+            const lvAdapt = data.layout_validation || {};
+            const fp = lvAdapt.final_pass_dropped || [];
+            if (fp.length) {
+                showToast(
+                    `Design guard: removed ${fp.length} text change(s) whose word count did not match the template.`,
+                    "error"
+                );
+            }
+            renderAdaptResults(data);
+            document.getElementById("applyAdaptBtn").style.display = "";
+        } catch (err) {
+            body.innerHTML = `<div class="ai-empty"><p style="color:#ef4444">Error: ${err.message}</p></div>`;
+            document.getElementById("briefForm").style.display = "";
+            document.getElementById("runAdaptBtn").style.display = "";
+        }
+    }
+
+    function renderAdaptResults(data) {
+        const strategy     = data.strategy || null;
+        const textChanges  = data.text_changes  || [];
+        const shapeChanges = data.shape_changes || [];
+        const imageChanges = data.image_changes || [];
+
+        let strategyHtml = "";
+        if (strategy) {
+            const tv = strategy.tone_vector || {};
+            const palette = strategy.palette || {};
+            strategyHtml = `
+              <div class="strategy-card">
+                <h3>✦ Strategy Plan · ${escapeHtml(humanize(data.mode || ""))}</h3>
+                <div class="strategy-grid">
+                  <div><div class="k">Partner Type</div><div class="v">${escapeHtml(strategy.partner_type || "—")}</div></div>
+                  <div><div class="k">Emotional Feel</div><div class="v">${escapeHtml(strategy.emotional_feel || "—")}</div></div>
+                  <div class="full"><div class="k">Tone Shift</div><div class="v">${escapeHtml(strategy.tone_shift || "—")}</div></div>
+                  <div class="full"><div class="k">Audience Shift</div><div class="v">${escapeHtml(strategy.audience_shift || "—")}</div></div>
+                  <div class="full"><div class="k">Messaging Shift</div><div class="v">${escapeHtml(strategy.messaging_shift || "—")}</div></div>
+                  <div class="full"><div class="k">Color Strategy</div><div class="v">${escapeHtml(strategy.color_strategy || "—")}</div></div>
+                  <div>
+                    <div class="k">Tone Vector</div>
+                    <div class="tone-bars">
+                      <span class="tone-bar">Authority <b>${tv.authority ?? "-"}</b></span>
+                      <span class="tone-bar">Friendliness <b>${tv.friendliness ?? "-"}</b></span>
+                      <span class="tone-bar">Urgency <b>${tv.urgency ?? "-"}</b></span>
+                      <span class="tone-bar">Modernity <b>${tv.modernity ?? "-"}</b></span>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="k">Palette</div>
+                    <div class="palette-swatches">
+                      <span title="primary ${palette.primary || ''}" style="background:${palette.primary || '#000'}"></span>
+                      <span title="accent ${palette.accent || ''}" style="background:${palette.accent || '#000'}"></span>
+                      <span title="background ${palette.background || ''}" style="background:${palette.background || '#000'}"></span>
+                    </div>
+                  </div>
+                  ${data.summary ? `<div class="full"><div class="k">Summary</div><div class="v">${escapeHtml(data.summary)}</div></div>` : ""}
+                </div>
+              </div>`;
+        } else if (data.summary) {
+            strategyHtml = `
+              <div class="strategy-card">
+                <h3>✦ ${escapeHtml(humanize(data.mode || ""))}</h3>
+                <div class="strategy-grid">
+                  <div class="full"><div class="k">Summary</div><div class="v">${escapeHtml(data.summary)}</div></div>
+                </div>
+              </div>`;
+        }
+
+        const textHtml = textChanges.length
+            ? `<div class="panel-title" style="margin-bottom:8px">Text Changes</div>` +
+              textChanges.map((s, i) => renderAdaptTextCard(s, i)).join("")
+            : "";
+
+        const shapeHtml = shapeChanges.length
+            ? `<div class="panel-title" style="margin-top:20px;margin-bottom:8px">Color Changes</div>` +
+              shapeChanges.map((s, i) => renderAdaptShapeCard(s, i)).join("")
+            : "";
+
+        const imageHtml = imageChanges.length
+            ? `<div class="panel-title" style="margin-top:20px;margin-bottom:8px">Image Changes</div>` +
+              imageChanges.map((s, i) => renderAdaptImageCard(s, i)).join("")
+            : "";
+
+        const empty = !textChanges.length && !shapeChanges.length && !imageChanges.length
+            ? `<div class="ai-empty"><p>No layer changes were recommended for this mode.</p></div>`
+            : "";
+
+        document.getElementById("adaptResults").innerHTML =
+            strategyHtml + textHtml + shapeHtml + imageHtml + empty;
+    }
+
+    function renderAdaptImageCard(s, i) {
+        adaptImageSel[s.layer_id] = 'ai';
+        return `
+        <div class="icard selected" id="aic_${i}">
+            <div class="img-box">
+                <img src="${escapeHtml(s.current_url || '')}" onerror="this.style.opacity=0.2">
+                <div>
+                    <div class="scard-layer" style="margin-bottom:4px">${humanize(s.layer_id)}</div>
+                    <div class="img-info">${escapeHtml(s.current_url || '(empty)')}</div>
+                </div>
+            </div>
+            <div class="img-box">
+                <img src="${escapeHtml(s.suggested_url || '')}" onerror="this.style.opacity=0.2">
+                <div>
+                    <div class="scard-layer" style="margin-bottom:4px;color:#22c55e">New</div>
+                    <div class="img-info suggested">${escapeHtml(s.suggested_url || '')}</div>
+                </div>
+            </div>
+            <div class="icard-footer">
+                <span>${escapeHtml(s.reason || '')}</span>
+                <span>
+                    <label id="aic_ai_lbl_${i}" class="ai-selected" style="margin-right:10px">
+                        <input type="radio" name="aic_r_${i}" checked
+                            onchange="handleAdaptImageSelect('${s.layer_id}', ${i}, 'ai')">
+                        Use new
+                    </label>
+                    <label id="aic_orig_lbl_${i}">
+                        <input type="radio" name="aic_r_${i}"
+                            onchange="handleAdaptImageSelect('${s.layer_id}', ${i}, 'original')">
+                        Keep original
+                    </label>
+                </span>
+            </div>
+        </div>`;
+    }
+
+    function handleAdaptImageSelect(layerId, i, type) {
+        adaptImageSel[layerId] = type;
+        const card = document.getElementById(`aic_${i}`);
+        const aiLbl = document.getElementById(`aic_ai_lbl_${i}`);
+        const origLbl = document.getElementById(`aic_orig_lbl_${i}`);
+        if (type === 'ai') {
+            if (card) card.classList.add('selected');
+            if (aiLbl) aiLbl.classList.add('ai-selected');
+            if (origLbl) origLbl.classList.remove('ai-selected');
+        } else {
+            if (card) card.classList.remove('selected');
+            if (origLbl) origLbl.classList.add('ai-selected');
+            if (aiLbl) aiLbl.classList.remove('ai-selected');
+        }
+    }
+
+    function renderAdaptTextCard(s, i) {
+        const origWords = (s.current_text || '').split(/\s+/).filter(Boolean).length;
+        const sugWords  = (s.suggested_text || '').split(/\s+/).filter(Boolean).length;
+        const match = origWords === sugWords;
+        const matchClass = match ? "ok" : "bad";
+        const matchLabel = match ? `✓ ${sugWords} words` : `✗ ${sugWords} vs ${origWords} words`;
+
+        adaptTextSel[s.layer_id]  = 'ai';
+        adaptTextEdit[s.layer_id] = s.suggested_text;
+
+        return `
+        <div class="scard selected" id="atc_${i}">
+            <div class="scard-header">
+                <span class="scard-layer">${humanize(s.layer_id)}</span>
+                <span class="scard-words ${matchClass}">${matchLabel}</span>
+            </div>
+            <div class="scard-row">
+                <div class="scard-col">
+                    <label>✕ Original</label>
+                    <div class="scard-col original-text">${escapeHtml(s.current_text)}</div>
+                </div>
+                <div class="scard-col ai-text">
+                    <label>✦ Adapted</label>
+                    <textarea rows="2" id="atc_ta_${i}"
+                        oninput="handleAdaptTextEdit('${s.layer_id}', ${i}, this.value)">${escapeHtml(s.suggested_text)}</textarea>
+                </div>
+            </div>
+            <div class="scard-reason">${escapeHtml(s.reason || "")}</div>
+            <div class="scard-actions">
+                <label id="atc_ai_lbl_${i}" class="ai-selected">
+                    <input type="radio" name="atc_r_${i}" checked
+                        onchange="handleAdaptTextSelect('${s.layer_id}', ${i}, 'ai')">
+                    Use adapted
+                </label>
+                <label id="atc_orig_lbl_${i}">
+                    <input type="radio" name="atc_r_${i}"
+                        onchange="handleAdaptTextSelect('${s.layer_id}', ${i}, 'original')">
+                    Keep original
+                </label>
+            </div>
+        </div>`;
+    }
+
+    function renderAdaptShapeCard(s, i) {
+        adaptShapeSel[s.layer_id] = 'ai';
+        const curCss = cssColor(s.current_fill);
+        const sugCss = cssColor(s.suggested_fill);
+        return `
+        <div class="ccard selected" id="acc_${i}">
+            <div class="ccard-header">
+                <span class="scard-layer">${humanize(s.layer_id)}</span>
+            </div>
+            <div class="swatch-row">
+                <div class="swatch-box">
+                    <div class="swatch-dot" style="background:${curCss}"></div>
+                    <div class="swatch-text">${escapeHtml(s.current_fill)}</div>
+                </div>
+                <div class="swatch-box">
+                    <div class="swatch-dot" style="background:${sugCss}"></div>
+                    <div class="swatch-text suggested">${escapeHtml(s.suggested_fill)}</div>
+                </div>
+            </div>
+            <div class="scard-reason">${escapeHtml(s.reason || "")}</div>
+            <div class="scard-actions">
+                <label id="acc_ai_lbl_${i}" class="ai-selected">
+                    <input type="radio" name="acc_r_${i}" checked
+                        onchange="handleAdaptShapeSelect('${s.layer_id}', ${i}, 'ai')">
+                    Use adapted
+                </label>
+                <label id="acc_orig_lbl_${i}">
+                    <input type="radio" name="acc_r_${i}"
+                        onchange="handleAdaptShapeSelect('${s.layer_id}', ${i}, 'original')">
+                    Keep original
+                </label>
+            </div>
+        </div>`;
+    }
+
+    function cssColor(v) {
+        if (!v) return "#000";
+        return v.trim();
+    }
+
+    function handleAdaptTextEdit(layerId, i, value) {
+        adaptTextEdit[layerId] = value;
+        adaptTextSel[layerId] = 'ai';
+        const card = document.getElementById(`atc_${i}`);
+        if (card) card.classList.add('selected');
+        const aiLbl = document.getElementById(`atc_ai_lbl_${i}`);
+        const origLbl = document.getElementById(`atc_orig_lbl_${i}`);
+        if (aiLbl) aiLbl.classList.add('ai-selected');
+        if (origLbl) origLbl.classList.remove('ai-selected');
+        const radios = document.getElementsByName(`atc_r_${i}`);
+        if (radios.length >= 1) radios[0].checked = true;
+    }
+
+    function handleAdaptTextSelect(layerId, i, type) {
+        adaptTextSel[layerId] = type;
+        const card = document.getElementById(`atc_${i}`);
+        const aiLbl = document.getElementById(`atc_ai_lbl_${i}`);
+        const origLbl = document.getElementById(`atc_orig_lbl_${i}`);
+        if (type === 'ai') {
+            if (card) card.classList.add('selected');
+            if (aiLbl) aiLbl.classList.add('ai-selected');
+            if (origLbl) origLbl.classList.remove('ai-selected');
+        } else {
+            if (card) card.classList.remove('selected');
+            if (origLbl) origLbl.classList.add('ai-selected');
+            if (aiLbl) aiLbl.classList.remove('ai-selected');
+        }
+    }
+
+    function handleAdaptShapeSelect(layerId, i, type) {
+        adaptShapeSel[layerId] = type;
+        const card = document.getElementById(`acc_${i}`);
+        const aiLbl = document.getElementById(`acc_ai_lbl_${i}`);
+        const origLbl = document.getElementById(`acc_orig_lbl_${i}`);
+        if (type === 'ai') {
+            if (card) card.classList.add('selected');
+            if (aiLbl) aiLbl.classList.add('ai-selected');
+            if (origLbl) origLbl.classList.remove('ai-selected');
+        } else {
+            if (card) card.classList.remove('selected');
+            if (origLbl) origLbl.classList.add('ai-selected');
+            if (aiLbl) aiLbl.classList.remove('ai-selected');
+        }
+    }
+
+    async function applyAdaptAndClose() {
+        if (!adaptResult) { closeAdaptModal(); return; }
+        let applied = 0;
+
+        for (const s of adaptResult.text_changes || []) {
+            if (adaptTextSel[s.layer_id] !== 'ai') continue;
+            const finalText = adaptTextEdit[s.layer_id] ?? s.suggested_text;
+            const field = document.getElementById(`txt_${s.layer_id}`);
+            if (field) { field.value = finalText; applied++; }
+        }
+
+        for (const s of adaptResult.shape_changes || []) {
+            if (adaptShapeSel[s.layer_id] !== 'ai') continue;
+            const fillEl  = document.getElementById(`fill_${s.layer_id}`);
+            const colorEl = document.getElementById(`color_${s.layer_id}`);
+            if (fillEl)  { fillEl.value = s.suggested_fill; applied++; }
+            if (colorEl) { colorEl.value = rgbToHex(s.suggested_fill); }
+        }
+
+        const fitJobs = [];
+        for (const s of adaptResult.image_changes || []) {
+            if (adaptImageSel[s.layer_id] !== 'ai') continue;
+            const imgEl   = document.getElementById(`img_${s.layer_id}`);
+            const fitEl   = document.getElementById(`fit_${s.layer_id}`);
+            if (imgEl)   { imgEl.value = s.suggested_url; applied++; }
+            // Any image we swap in has a different native aspect ratio than
+            // the original slot, so force 'contain' (unless the user picked
+            // something else) and let the backend produce a ready-to-render
+            // asset at the exact slot dimensions.
+            const fit = (fitEl && fitEl.dataset.userSet) ? fitEl.value : "contain";
+            if (fitEl && !fitEl.dataset.userSet) fitEl.value = fit;
+            fitJobs.push(fitImageForLayer(s.layer_id, s.suggested_url, fit));
+        }
+        if (fitJobs.length) await Promise.all(fitJobs);
+        const imgNote = fitJobs.length ? ` · resized ${fitJobs.length} image${fitJobs.length !== 1 ? 's' : ''}` : "";
+        showToast(`Applied ${applied} change${applied !== 1 ? 's' : ''}${imgNote}. Click Generate to re-render.`, "success");
+        closeAdaptModal();
+    }
+
+    // ─── Toast ────────────────────────────────────────────────
+    let toastTimer;
+    function showToast(msg, type = "") {
+        const t = document.getElementById("toast");
+        t.textContent = msg;
+        t.className = `toast show ${type}`;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { t.className = "toast"; }, 3000);
+    }
+</script>
+</body>
+</html>
