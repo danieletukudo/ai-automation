@@ -840,12 +840,14 @@ def run_mode(
 
     # ─── Final layout guard (all modes with text_changes) ───
     # Drops any row whose visible word count ≠ template snapshot, except
-    # brand_asset rows (e.g. website URL may change length on purpose).
-    skip_brand = frozenset({"brand_asset"})
+    # rows the user explicitly authored. Brand asset rows are length-locked
+    # to the user-supplied URL/text; find_replace is a literal substitution
+    # the user asked for — neither should be silently dropped.
+    skip_user_authored = frozenset({"brand_asset", "find_replace"})
     kept_final, dropped_final = filter_text_changes(
         text_changes,
         originals_by_layer=text_layers,
-        skip_sources=skip_brand,
+        skip_sources=skip_user_authored,
     )
     text_changes = kept_final
     if dropped_final:
@@ -859,6 +861,227 @@ def run_mode(
 
     return {
         "mode":          mode,
+        "strategy":      strategy,
+        "text_changes":  text_changes,
+        "shape_changes": shape_changes,
+        "image_changes": image_changes,
+        "summary":       summary,
+        "layout_validation": layout_validation,
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+#   MULTI-MODE ORCHESTRATOR
+# ─────────────────────────────────────────────────────────────
+# run_modes() lets the UI tick several mode checkboxes and have all the
+# requested transforms run in a single pass, with sane conflict rules:
+#
+#   * brand_assets (logo/QR/website) and image_overrides are ALWAYS applied
+#     — they're separate inputs, not really "modes".
+#   * If `logo_qr_website_colors` is selected, the user's primary/accent
+#     hexes are mapped to template shape layers (no AI).
+#   * AI text/colors:
+#       - if `ai_with_rules` is selected, it runs (and subsumes ai_rewrite —
+#         picking both is harmless, ai_with_rules wins because it already
+#         honors the find/replace rules).
+#       - else if `ai_rewrite` is selected, plain AI rewrite runs.
+#   * If `find_replace` is selected, the rules are applied LITERALLY on top
+#     of whatever text_changes already exist (so AI output gets the rules
+#     too) AND on layers no other mode touched. This is idempotent w.r.t.
+#     `ai_with_rules`.
+#   * `image_only` is a marker that means "I only want image swaps" — when
+#     mixed with other modes it's a no-op (image_overrides already work).
+#     When selected alone, no AI / colors / text run.
+#
+# Conflict resolution per layer:
+#   * text_changes: keyed by layer_id, last write wins, but find_replace
+#     post-processing edits suggested_text in place rather than appending.
+#   * shape_changes: keyed by layer_id, brand_color (logo_qr_website_colors)
+#     beats AI (user explicitly mapped the color → it should win).
+#   * image_changes: brand_assets win over user overrides via setdefault
+#     (existing behavior in run_mode preserved).
+
+def _index_changes_by_layer(changes: list[dict]) -> dict[str, dict]:
+    return {c["layer_id"]: c for c in changes if c.get("layer_id")}
+
+
+def run_modes(
+    modes: list[str],
+    partner_brief: dict,
+    text_layers: dict[str, str],
+    shape_layers: dict[str, str],
+    image_layers: dict[str, str] | None = None,
+    replace_rules: list[dict] | None = None,
+    image_overrides: dict[str, str] | None = None,
+    brand_assets: dict | None = None,
+    brand_colors: dict[str, str | None] | None = None,
+    shape_color_roles: dict[str, list[str]] | None = None,
+) -> dict:
+    """
+    Run one or more modes and return a single merged result with the same
+    shape as run_mode().
+    """
+    modes = list(modes or [])
+    if not modes:
+        raise ValueError("run_modes() requires at least one mode")
+    for m in modes:
+        if m not in SUPPORTED_MODES:
+            raise ValueError(f"Unknown mode: {m!r}. Expected one of {sorted(SUPPORTED_MODES)}.")
+
+    selected = set(modes)
+    # AI conflict: ai_with_rules subsumes ai_rewrite. Drop the redundant one
+    # so we don't make two LLM calls when both are ticked.
+    if "ai_with_rules" in selected:
+        selected.discard("ai_rewrite")
+
+    # Decide which "mode block" is responsible for AI text/colors. Only one.
+    ai_mode = (
+        "ai_with_rules" if "ai_with_rules" in selected
+        else "ai_rewrite" if "ai_rewrite" in selected
+        else None
+    )
+
+    text_layers     = dict(text_layers or {})
+    shape_layers    = dict(shape_layers or {})
+    image_layers    = dict(image_layers or {})
+    replace_rules   = list(replace_rules or [])
+    image_overrides = dict(image_overrides or {})
+    brand_assets    = dict(brand_assets or {})
+    brand_colors    = dict(brand_colors or {})
+
+    text_by_layer:  dict[str, dict] = {}
+    shape_by_layer: dict[str, dict] = {}
+    image_by_layer: dict[str, dict] = {}
+    strategy: dict | None = None
+    summaries: list[str] = []
+    layout_validation: dict[str, Any] = {}
+
+    # ── 1. Brand assets + image overrides (always) ─────────
+    base = run_mode(
+        mode="image_only",
+        partner_brief=partner_brief,
+        text_layers=text_layers,
+        shape_layers=shape_layers,
+        image_layers=image_layers,
+        image_overrides=image_overrides,
+        brand_assets=brand_assets,
+    )
+    text_by_layer.update(_index_changes_by_layer(base.get("text_changes") or []))
+    image_by_layer.update(_index_changes_by_layer(base.get("image_changes") or []))
+
+    if "image_only" in selected and len(selected) == 1:
+        summaries.append(base.get("summary") or "")
+
+    # ── 2. logo_qr_website_colors (no-AI color mapping) ────
+    if "logo_qr_website_colors" in selected:
+        lqr = run_mode(
+            mode="logo_qr_website_colors",
+            partner_brief=partner_brief,
+            text_layers=text_layers,
+            shape_layers=shape_layers,
+            image_layers=image_layers,
+            image_overrides=image_overrides,
+            brand_assets=brand_assets,
+            brand_colors=brand_colors,
+            shape_color_roles=shape_color_roles,
+        )
+        # Brand-color shape rows take priority over anything AI suggests
+        # for the same layer (so we add them last in step 3).
+        for c in lqr.get("shape_changes") or []:
+            shape_by_layer[c["layer_id"]] = c
+        # Re-affirm any text/image rows it produced (website override etc.).
+        for c in lqr.get("text_changes") or []:
+            text_by_layer.setdefault(c["layer_id"], c)
+        for c in lqr.get("image_changes") or []:
+            image_by_layer.setdefault(c["layer_id"], c)
+        if lqr.get("summary"):
+            summaries.append(lqr["summary"])
+
+    # ── 3. AI text/colors (one of ai_rewrite / ai_with_rules) ──
+    if ai_mode:
+        ai = run_mode(
+            mode=ai_mode,
+            partner_brief=partner_brief,
+            text_layers=text_layers,
+            shape_layers=shape_layers,
+            image_layers=image_layers,
+            replace_rules=replace_rules,
+            image_overrides=image_overrides,
+            brand_assets=brand_assets,
+        )
+        strategy = ai.get("strategy")
+        for c in ai.get("text_changes") or []:
+            text_by_layer.setdefault(c["layer_id"], c)
+        for c in ai.get("shape_changes") or []:
+            # Don't overwrite brand-color picks from logo_qr_website_colors.
+            shape_by_layer.setdefault(c["layer_id"], c)
+        if ai.get("summary"):
+            summaries.append(ai["summary"])
+        if ai.get("layout_validation"):
+            layout_validation[f"ai_{ai_mode}"] = ai["layout_validation"]
+
+    # ── 4. find_replace (literal, last so it acts on AI output too) ──
+    if "find_replace" in selected and replace_rules:
+        rules = [r for r in replace_rules if (r.get("find") or "").strip()]
+        # Apply rules in place to any text_change already in the bag.
+        for lid, c in list(text_by_layer.items()):
+            sug = c.get("suggested_text") or ""
+            new = _apply_find_replace(sug, rules)
+            if new != sug:
+                c["suggested_text"]     = new
+                c["word_count"]         = count_words_template(new)
+                c["find_replace_applied"] = True
+                if c.get("source") != "find_replace":
+                    base_reason = c.get("reason") or ""
+                    c["reason"] = (
+                        f"{base_reason} (find/replace rules applied)".strip()
+                        if base_reason else "Find/replace rules applied."
+                    )
+                    # Re-tag as user-authored so the layout guard respects
+                    # the literal substitution the user asked for.
+                    c["original_source"] = c.get("source") or ""
+                    c["source"] = "find_replace"
+        # Also run rules on layers nothing touched yet.
+        website_layer_id = (brand_assets.get("website") or {}).get("layer_id")
+        for lid, current in text_layers.items():
+            if lid in text_by_layer:
+                continue
+            if lid == website_layer_id:
+                continue
+            new = _apply_find_replace(current, rules)
+            if new != current:
+                text_by_layer[lid] = {
+                    "layer_id": lid,
+                    "current_text": current,
+                    "suggested_text": new,
+                    "word_count": count_words_template(new),
+                    "reason": "Literal find & replace rule applied.",
+                    "source": "find_replace",
+                }
+        summaries.append(f"Find & replace: {len(rules)} rule(s) applied.")
+
+    # ── Final layout guard ────────────────────────────────
+    text_changes  = list(text_by_layer.values())
+    shape_changes = list(shape_by_layer.values())
+    image_changes = list(image_by_layer.values())
+
+    skip_user_authored = frozenset({"brand_asset", "find_replace"})
+    kept_final, dropped_final = filter_text_changes(
+        text_changes,
+        originals_by_layer=text_layers,
+        skip_sources=skip_user_authored,
+    )
+    text_changes = kept_final
+    if dropped_final:
+        layout_validation.setdefault("final_pass_dropped", []).extend(dropped_final)
+
+    summary = " · ".join(s for s in summaries if s) or (
+        f"Ran {len(selected)} mode(s): {', '.join(sorted(selected))}."
+    )
+
+    return {
+        "mode":          modes[0] if len(modes) == 1 else "multi",
+        "modes":         sorted(selected),
         "strategy":      strategy,
         "text_changes":  text_changes,
         "shape_changes": shape_changes,

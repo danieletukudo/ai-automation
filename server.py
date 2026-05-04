@@ -17,8 +17,6 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 
 load_dotenv()
-'''968dde0e-fd26-458c-b738-b1e22f35ec51"
-app.config["TEMPLATE_ID"] = "013c2f92-ae39-46ea-a001-f06051884611"'''
 app = Flask(__name__, static_folder=".")
 CORS(app)
 app.config["API_KEY"] = (os.getenv("TEMPLATED_API_KEY") or "").strip()
@@ -261,17 +259,35 @@ def adapt_by_mode():
       }
     """
     try:
-        from design_adapter import run_mode, SUPPORTED_MODES
+        from design_adapter import run_modes, SUPPORTED_MODES
     except ImportError:
         return jsonify({"error": "design_adapter.py not found"}), 500
 
     data = request.get_json() or {}
-    mode = (data.get("mode") or "").strip()
 
-    if mode not in SUPPORTED_MODES:
+    # Accept either `modes: ["a", "b", ...]` (multi-select) or the legacy
+    # singular `mode: "a"`. Empty / unknown entries are rejected.
+    raw_modes = data.get("modes")
+    if raw_modes is None:
+        single = (data.get("mode") or "").strip()
+        modes = [single] if single else []
+    else:
+        if not isinstance(raw_modes, list):
+            return jsonify({"error": "'modes' must be a list of mode strings"}), 400
+        modes = [str(m).strip() for m in raw_modes if str(m).strip()]
+
+    if not modes:
         return jsonify({
-            "error": f"Invalid or missing 'mode'. Expected one of: {sorted(SUPPORTED_MODES)}"
+            "error": "Pick at least one mode. Send `modes: [...]` or `mode: \"...\"`."
         }), 400
+
+    bad = [m for m in modes if m not in SUPPORTED_MODES]
+    if bad:
+        return jsonify({
+            "error": f"Unknown mode(s): {bad}. Expected: {sorted(SUPPORTED_MODES)}"
+        }), 400
+
+    selected = set(modes)
 
     partner_brief   = data.get("partner_brief")   or {}
     text_layers     = data.get("text_layers")     or {}
@@ -279,6 +295,7 @@ def adapt_by_mode():
     image_layers    = data.get("image_layers")    or {}
     replace_rules   = data.get("replace_rules")   or []
     image_overrides = data.get("image_overrides") or {}
+    brand_colors    = data.get("brand_colors")    or {}
 
     # Strip locked layers from everything the adapter sees — they're never
     # modified, never shown to the LLM, never overridable.
@@ -298,21 +315,32 @@ def adapt_by_mode():
         "website": {**defaults["website"], **(brand_assets_in.get("website") or {})},
     }
 
-    # Mode-specific required-field checks (better errors than the LLM would give).
-    if mode in ("ai_rewrite", "ai_with_rules", "branding_only") and not partner_brief.get("name"):
-        return jsonify({"error": "partner_brief.name is required for this mode"}), 400
-    if mode == "find_replace" and not any(r.get("find") for r in replace_rules):
-        return jsonify({"error": "find_replace mode requires at least one rule with 'find'"}), 400
-    if mode == "ai_with_rules" and not any(r.get("find") for r in replace_rules):
-        return jsonify({"error": "ai_with_rules mode requires at least one find/replace rule"}), 400
-    if mode == "image_only" and not image_overrides and not any(
-        brand_assets[k].get("url") for k in ("logo", "qr")
+    # Per-mode required-field checks. Fired only for the modes actually picked.
+    needs_brief_modes = {"ai_rewrite", "ai_with_rules"}
+    if selected & needs_brief_modes and not partner_brief.get("name"):
+        return jsonify({
+            "error": "partner_brief.name is required when AI Rewrite or AI with Rules is selected"
+        }), 400
+    if "find_replace" in selected and not any(r.get("find") for r in replace_rules):
+        return jsonify({
+            "error": "Find & Replace requires at least one rule with 'find'"
+        }), 400
+    if "ai_with_rules" in selected and not any(r.get("find") for r in replace_rules):
+        return jsonify({
+            "error": "AI with Rules requires at least one find/replace rule"
+        }), 400
+    if (
+        selected == {"image_only"}
+        and not image_overrides
+        and not any(brand_assets[k].get("url") for k in ("logo", "qr"))
     ):
-        return jsonify({"error": "image_only mode requires at least one image override or brand image"}), 400
+        return jsonify({
+            "error": "Swap Image Only requires at least one image override or brand image"
+        }), 400
 
     try:
-        result = run_mode(
-            mode=mode,
+        result = run_modes(
+            modes=sorted(selected),
             partner_brief=partner_brief,
             text_layers=text_layers,
             shape_layers=shape_layers,
@@ -320,6 +348,7 @@ def adapt_by_mode():
             replace_rules=replace_rules,
             image_overrides=image_overrides,
             brand_assets=brand_assets,
+            brand_colors=brand_colors,
         )
         for key in ("text_changes", "shape_changes", "image_changes"):
             result[key] = [c for c in result.get(key, []) if c.get("layer_id") not in locked]

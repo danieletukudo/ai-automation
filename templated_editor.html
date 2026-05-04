@@ -755,6 +755,36 @@
             color: #fff;
             border-color: #2563eb;
         }
+        /* Checkbox indicator on each mode-card (multi-select) */
+        .mode-card .mode-check {
+            width: 16px; height: 16px;
+            border-radius: 4px;
+            border: 1.5px solid #3a3a3a;
+            background: #0a0a0a;
+            display: inline-flex;
+            align-items: center; justify-content: center;
+            position: relative;
+            flex-shrink: 0;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .mode-card.active .mode-check {
+            background: #2563eb;
+            border-color: #2563eb;
+        }
+        .mode-card.active .mode-check::after {
+            content: "";
+            width: 5px; height: 9px;
+            border-right: 2px solid #fff;
+            border-bottom: 2px solid #fff;
+            transform: rotate(45deg) translate(-1px, -1px);
+        }
+        .mode-summary {
+            margin: 6px 2px 12px;
+            font-size: 11.5px;
+            color: #6c8cff;
+            min-height: 16px;
+        }
+        .mode-summary .mode-summary-warn { color: #f0a94d; }
 
         /* Mode-specific panel */
         .mode-panel {
@@ -1087,33 +1117,49 @@
                     </div>
                 </div>
 
-                <!-- STEP 3 — Mode picker -->
+                <!-- STEP 3 — Mode picker (multi-select) -->
                 <div class="section-header">
-                    <div class="panel-title">Choose mode</div>
-                    <span class="section-hint">Pick one — controls how text is handled</span>
+                    <div class="panel-title">Choose what to apply</div>
+                    <span class="section-hint" id="modePickerHint">Tick one or more — they all run together</span>
                 </div>
                 <div class="mode-grid">
-                    <div class="mode-card active" data-mode="logo_qr_website_colors" onclick="selectMode('logo_qr_website_colors')">
-                        <div class="mode-title"><span class="mode-num">1</span> Logo, QR, website &amp; colors</div>
-                        <div class="mode-desc">No AI, fast. Only swap logo, QR, website link text, and your primary/accent colors. All other words stay the same.</div>
+                    <div class="mode-card active" data-mode="logo_qr_website_colors" onclick="toggleMode(event, 'logo_qr_website_colors')">
+                        <div class="mode-title">
+                            <span class="mode-check" aria-hidden="true"></span>
+                            <span class="mode-num">1</span> Logo, QR, website &amp; colors
+                        </div>
+                        <div class="mode-desc">No AI, fast. Swap logo, QR, website link text, and your primary/accent colors. All other words stay the same.</div>
                     </div>
-                    <div class="mode-card" data-mode="ai_rewrite" onclick="selectMode('ai_rewrite')">
-                        <div class="mode-title"><span class="mode-num">2</span> AI Rewrite (full)</div>
+                    <div class="mode-card" data-mode="ai_rewrite" onclick="toggleMode(event, 'ai_rewrite')">
+                        <div class="mode-title">
+                            <span class="mode-check" aria-hidden="true"></span>
+                            <span class="mode-num">2</span> AI Rewrite (full)
+                        </div>
                         <div class="mode-desc">Partner brief → AI rewrites marketing text and suggests colors (slow — uses Gemini).</div>
                     </div>
-                    <div class="mode-card" data-mode="find_replace" onclick="selectMode('find_replace')">
-                        <div class="mode-title"><span class="mode-num">3a</span> Find &amp; Replace</div>
-                        <div class="mode-desc">Literal substitution. Tell us which words to find and what to replace them with.</div>
+                    <div class="mode-card" data-mode="find_replace" onclick="toggleMode(event, 'find_replace')">
+                        <div class="mode-title">
+                            <span class="mode-check" aria-hidden="true"></span>
+                            <span class="mode-num">3a</span> Find &amp; Replace
+                        </div>
+                        <div class="mode-desc">Literal substitution. Tell us which words to find and what to replace them with — works on top of AI rewrites too.</div>
                     </div>
-                    <div class="mode-card" data-mode="ai_with_rules" onclick="selectMode('ai_with_rules')">
-                        <div class="mode-title"><span class="mode-num">3b</span> AI with Rules</div>
-                        <div class="mode-desc">AI writes new copy but must obey your find→replace rules (e.g. company name).</div>
+                    <div class="mode-card" data-mode="ai_with_rules" onclick="toggleMode(event, 'ai_with_rules')">
+                        <div class="mode-title">
+                            <span class="mode-check" aria-hidden="true"></span>
+                            <span class="mode-num">3b</span> AI with Rules
+                        </div>
+                        <div class="mode-desc">AI writes new copy but must obey your find→replace rules (e.g. company name). Picking this auto-handles AI Rewrite.</div>
                     </div>
-                    <div class="mode-card" data-mode="image_only" onclick="selectMode('image_only')">
-                        <div class="mode-title"><span class="mode-num">4</span> Swap Image Only</div>
-                        <div class="mode-desc">Replace one or more image layers with URLs you provide. No text or color changes.</div>
+                    <div class="mode-card" data-mode="image_only" onclick="toggleMode(event, 'image_only')">
+                        <div class="mode-title">
+                            <span class="mode-check" aria-hidden="true"></span>
+                            <span class="mode-num">4</span> Swap Images
+                        </div>
+                        <div class="mode-desc">Replace one or more image layers with URLs you provide. Pick alone for no text or color changes.</div>
                     </div>
                 </div>
+                <div class="mode-summary" id="modeSummary"></div>
 
                 <!-- Find/replace rules panel (shown for modes 3a and 3b) -->
                 <div class="mode-panel" id="rulesPanel" style="display:none">
@@ -1150,7 +1196,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-    const API_BASE = "https://ai-automation-zb93.onrender.com";
+    const API_BASE = "http://localhost:5001";
 
     // Layers that must never be changed by any mode. Kept in sync with
     // server.py > LOCKED_LAYERS — edits here only control the UI; the server
@@ -2173,7 +2219,16 @@
     let adaptShapeSel = {};  // layer_id -> 'ai' | 'original'
     let adaptImageSel = {};  // layer_id -> 'ai' | 'original'
 
+    // Multi-select: user can tick more than one mode and they all run together.
+    // Keep the legacy `currentMode` updated to the "primary" pick (first in the
+    // set, in card order) so older code paths still work.
+    let currentModes = new Set(["logo_qr_website_colors"]);
     let currentMode = "logo_qr_website_colors";
+
+    const MODE_ORDER = [
+        "logo_qr_website_colors", "ai_rewrite", "find_replace",
+        "ai_with_rules", "image_only",
+    ];
 
     const ADAPT_MODE_LABEL = {
         logo_qr_website_colors: "Logo, QR, website & colors",
@@ -2202,7 +2257,8 @@
         if (!imageOverrides.length) { imageOverrides = []; }
         renderRulesList();
         renderImageOverrideList();
-        selectMode(currentMode);
+        if (!currentModes.size) currentModes.add("logo_qr_website_colors");
+        refreshModeUI();
     }
 
     function closeAdaptModal() {
@@ -2243,11 +2299,31 @@
         fill("ba_web_layer",  textOpts,  BRAND_ASSET_DEFAULT_IDS.website);
     }
 
-    // ─── Mode picker ────────────────────────────────────────
+    // ─── Mode picker (multi-select) ─────────────────────────
+    function toggleMode(e, mode) {
+        if (e && e.preventDefault) e.preventDefault();
+        if (currentModes.has(mode)) {
+            currentModes.delete(mode);
+            // Don't allow zero selections — re-tick the one we just removed.
+            if (!currentModes.size) currentModes.add(mode);
+        } else {
+            currentModes.add(mode);
+        }
+        // Keep `currentMode` pointing at the "primary" pick for legacy uses.
+        currentMode = MODE_ORDER.find(m => currentModes.has(m)) || "logo_qr_website_colors";
+        refreshModeUI();
+    }
+
+    // Kept for back-compat (any older code path that still calls selectMode).
     function selectMode(mode) {
+        currentModes = new Set([mode]);
         currentMode = mode;
+        refreshModeUI();
+    }
+
+    function refreshModeUI() {
         document.querySelectorAll(".mode-card").forEach(card => {
-            card.classList.toggle("active", card.dataset.mode === mode);
+            card.classList.toggle("active", currentModes.has(card.dataset.mode));
         });
 
         const briefWrap      = document.getElementById("partnerBriefWrap");
@@ -2256,28 +2332,48 @@
         const rulesPanel     = document.getElementById("rulesPanel");
         const imgPanel       = document.getElementById("imageOverridePanel");
         const imgTitle       = document.getElementById("imageOverrideTitle");
+        const summary        = document.getElementById("modeSummary");
 
-        const needsBrief     = (mode === "ai_rewrite" || mode === "ai_with_rules");
-        const showBrandColors = (mode === "logo_qr_website_colors" || mode === "ai_rewrite" || mode === "ai_with_rules");
-        const needsRules     = (mode === "find_replace" || mode === "ai_with_rules");
-        const imageOnly      = (mode === "image_only");
+        const has            = m => currentModes.has(m);
+        const needsBrief     = has("ai_rewrite") || has("ai_with_rules");
+        const showBrandColors = has("logo_qr_website_colors") || has("ai_rewrite") || has("ai_with_rules");
+        const needsRules     = has("find_replace") || has("ai_with_rules");
+        const imageOnlyAlone = currentModes.size === 1 && has("image_only");
 
         if (briefWrap) briefWrap.style.display = needsBrief ? "" : "none";
         if (colorsWrap) colorsWrap.style.display = showBrandColors ? "" : "none";
         if (colorsHint) {
-            if (mode === "logo_qr_website_colors") {
+            if (has("logo_qr_website_colors")) {
                 colorsHint.textContent = "Required — mapped to template shapes (no AI, instant)";
-            } else if (mode === "ai_rewrite" || mode === "ai_with_rules") {
+            } else if (needsBrief) {
                 colorsHint.textContent = "Also sent to AI with your partner brief";
             } else {
                 colorsHint.textContent = "";
             }
         }
-        rulesPanel.style.display = needsRules ? "" : "none";
-        imgPanel.style.display   = "";
-        imgTitle.textContent = imageOnly
-            ? "Images to swap (required for this mode)"
-            : "Optional · Swap additional images";
+        if (rulesPanel) rulesPanel.style.display = needsRules ? "" : "none";
+        if (imgPanel)   imgPanel.style.display   = "";
+        if (imgTitle) {
+            imgTitle.textContent = imageOnlyAlone
+                ? "Images to swap (required for this mode)"
+                : "Optional · Swap additional images";
+        }
+
+        if (summary) {
+            const picks = MODE_ORDER.filter(m => currentModes.has(m))
+                                    .map(m => ADAPT_MODE_LABEL[m] || m);
+            const parts = [];
+            if (picks.length === 1) {
+                parts.push(`Will run: <b>${escapeHtml(picks[0])}</b>`);
+            } else if (picks.length > 1) {
+                parts.push(`Will run <b>${picks.length}</b> together: ${picks.map(escapeHtml).join(" · ")}`);
+            }
+            // Friendly note when both AI variants are picked.
+            if (has("ai_rewrite") && has("ai_with_rules")) {
+                parts.push(`<span class="mode-summary-warn">AI with Rules covers AI Rewrite — only one AI pass will be made.</span>`);
+            }
+            summary.innerHTML = parts.join(" &nbsp;·&nbsp; ");
+        }
     }
 
     // ─── Find/replace rule rows ─────────────────────────────
@@ -2391,13 +2487,19 @@
         const brand_assets = collectBrandAssets();
         const brief = collectPartnerBrief();
 
-        // Mode-specific validation up front (cheaper than a round-trip).
-        const aiModes = new Set(["ai_rewrite", "ai_with_rules"]);
-        if (aiModes.has(currentMode) && !brief.name) {
-            showToast("Enter the partner name for this mode", "error");
+        const selected = MODE_ORDER.filter(m => currentModes.has(m));
+        if (!selected.length) {
+            showToast("Pick at least one mode", "error");
             return;
         }
-        if (currentMode === "logo_qr_website_colors") {
+        const has = m => currentModes.has(m);
+
+        // Per-mode validation — only require a field if its mode is picked.
+        if ((has("ai_rewrite") || has("ai_with_rules")) && !brief.name) {
+            showToast("Enter the partner name (required for AI modes)", "error");
+            return;
+        }
+        if (has("logo_qr_website_colors")) {
             if (!brand_assets.logo.layer_id || !brand_assets.qr.layer_id || !brand_assets.website.layer_id) {
                 showToast("Select logo, QR, and website layers in the dropdowns", "error");
                 return;
@@ -2414,13 +2516,14 @@
             }
         }
         const rulesFilled = replaceRules.filter(r => (r.find || "").trim());
-        if ((currentMode === "find_replace" || currentMode === "ai_with_rules") && !rulesFilled.length) {
-            showToast("Add at least one find → replace rule for this mode", "error");
+        if ((has("find_replace") || has("ai_with_rules")) && !rulesFilled.length) {
+            showToast("Add at least one find → replace rule", "error");
             return;
         }
         const overridesFilled = imageOverrides.filter(r => r.layer_id && r.url);
         const anyBrandImage = brand_assets.logo.url || brand_assets.qr.url;
-        if (currentMode === "image_only" && !overridesFilled.length && !anyBrandImage) {
+        const onlyImage = selected.length === 1 && has("image_only");
+        if (onlyImage && !overridesFilled.length && !anyBrandImage) {
             showToast("Provide at least one image URL (logo, QR, or an override)", "error");
             return;
         }
@@ -2428,15 +2531,22 @@
         const body = document.getElementById("adaptResults");
         document.getElementById("briefForm").style.display = "none";
         document.getElementById("runAdaptBtn").style.display = "none";
-        const modeLabel = escapeHtml(ADAPT_MODE_LABEL[currentMode] || humanize(currentMode));
+
+        const labels = selected.map(m => ADAPT_MODE_LABEL[m] || humanize(m));
+        const headline = labels.length === 1
+            ? `<b>${escapeHtml(labels[0])}</b>`
+            : `<b>${labels.length} modes together</b>: ${labels.map(escapeHtml).join(" · ")}`;
+        const noAi = !has("ai_rewrite") && !has("ai_with_rules");
         body.innerHTML = `
             <div class="ai-loading">
                 <div class="spinner" style="margin:0 auto"></div>
-                <p>Running <b>${modeLabel}</b>${currentMode === "logo_qr_website_colors" ? " — no AI, should finish in a second" : ""}...</p>
+                <p>Running ${headline}${noAi ? " — no AI, should finish in a second" : ""}...</p>
             </div>`;
 
         const payload = {
-            mode: currentMode,
+            modes: selected,
+            // Send legacy `mode` too so any non-updated consumer still works.
+            mode: selected[0],
             partner_brief: brief,
             brand_colors: {
                 primary: document.getElementById("pb_primary").value.trim(),
