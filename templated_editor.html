@@ -550,6 +550,59 @@
         .ai-empty svg { opacity: 0.2; }
         .ai-empty p { font-size: 13px; color: #444; }
 
+        /* Find & Replace diagnostics notice */
+        .fr-notice {
+            border: 1px solid #2a2a2a;
+            border-left: 3px solid #2563eb;
+            background: #0f0f0f;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin: 0 0 14px;
+            color: #d0d0d0;
+            font-size: 12.5px;
+            line-height: 1.5;
+        }
+        .fr-notice-ok    { border-left-color: #22c55e; }
+        .fr-notice-mixed { border-left-color: #f0a94d; }
+        .fr-notice-warn  { border-left-color: #ef4444; background: #160d0d; }
+        .fr-notice .fr-head {
+            font-weight: 700;
+            color: #e6e6e6;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 8px;
+        }
+        .fr-notice .fr-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        .fr-notice .fr-list li {
+            padding: 4px 0;
+            border-top: 1px dashed #1f1f1f;
+        }
+        .fr-notice .fr-list li:first-child { border-top: 0; }
+        .fr-notice code {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 4px;
+            padding: 1px 6px;
+            font-size: 11.5px;
+            color: #cfd8ff;
+        }
+        .fr-notice .fr-hit  { color: #22c55e; }
+        .fr-notice .fr-miss { color: #ef4444; font-weight: 600; }
+        .fr-notice .fr-count { color: #888; font-size: 11px; }
+        .fr-notice .fr-tip {
+            margin-top: 10px;
+            padding: 8px 10px;
+            background: #1a1a1a;
+            border-radius: 6px;
+            color: #aaa;
+            font-size: 11.5px;
+        }
+
         /* ── Partner Brief form (inside Adapt modal) ── */
         .brief-grid {
             display: grid;
@@ -1123,7 +1176,7 @@
                     <span class="section-hint" id="modePickerHint">Tick one or more — they all run together</span>
                 </div>
                 <div class="mode-grid">
-                    <div class="mode-card active" data-mode="logo_qr_website_colors" onclick="toggleMode(event, 'logo_qr_website_colors')">
+                    <div class="mode-card" data-mode="logo_qr_website_colors" onclick="toggleMode(event, 'logo_qr_website_colors')">
                         <div class="mode-title">
                             <span class="mode-check" aria-hidden="true"></span>
                             <span class="mode-num">1</span> Logo, QR, website &amp; colors
@@ -2220,10 +2273,11 @@
     let adaptImageSel = {};  // layer_id -> 'ai' | 'original'
 
     // Multi-select: user can tick more than one mode and they all run together.
-    // Keep the legacy `currentMode` updated to the "primary" pick (first in the
-    // set, in card order) so older code paths still work.
-    let currentModes = new Set(["logo_qr_website_colors"]);
-    let currentMode = "logo_qr_website_colors";
+    // Start empty so the user explicitly picks what they want — avoids the
+    // trap where defaults would gate-keep an unrelated mode (e.g. requiring
+    // brand-asset URLs when the user only wants find & replace).
+    let currentModes = new Set();
+    let currentMode = "";
 
     const MODE_ORDER = [
         "logo_qr_website_colors", "ai_rewrite", "find_replace",
@@ -2257,7 +2311,7 @@
         if (!imageOverrides.length) { imageOverrides = []; }
         renderRulesList();
         renderImageOverrideList();
-        if (!currentModes.size) currentModes.add("logo_qr_website_colors");
+        // Don't carry stale ticks across reopens — let the user choose fresh.
         refreshModeUI();
     }
 
@@ -2363,16 +2417,24 @@
             const picks = MODE_ORDER.filter(m => currentModes.has(m))
                                     .map(m => ADAPT_MODE_LABEL[m] || m);
             const parts = [];
-            if (picks.length === 1) {
+            if (picks.length === 0) {
+                parts.push(`<span class="mode-summary-warn">Pick at least one option above to enable Run.</span>`);
+            } else if (picks.length === 1) {
                 parts.push(`Will run: <b>${escapeHtml(picks[0])}</b>`);
-            } else if (picks.length > 1) {
+            } else {
                 parts.push(`Will run <b>${picks.length}</b> together: ${picks.map(escapeHtml).join(" · ")}`);
             }
-            // Friendly note when both AI variants are picked.
             if (has("ai_rewrite") && has("ai_with_rules")) {
                 parts.push(`<span class="mode-summary-warn">AI with Rules covers AI Rewrite — only one AI pass will be made.</span>`);
             }
             summary.innerHTML = parts.join(" &nbsp;·&nbsp; ");
+        }
+
+        const runBtn = document.getElementById("runAdaptBtn");
+        if (runBtn) {
+            runBtn.disabled = currentModes.size === 0;
+            runBtn.style.opacity = runBtn.disabled ? "0.5" : "";
+            runBtn.style.cursor  = runBtn.disabled ? "not-allowed" : "";
         }
     }
 
@@ -2593,6 +2655,10 @@
         const textChanges  = data.text_changes  || [];
         const shapeChanges = data.shape_changes || [];
         const imageChanges = data.image_changes || [];
+        const lv           = data.layout_validation || {};
+        const fr           = lv.find_replace || null;
+        const ranFR        = (data.modes || []).includes("find_replace")
+                             || data.mode === "find_replace";
 
         let strategyHtml = "";
         if (strategy) {
@@ -2653,12 +2719,57 @@
               imageChanges.map((s, i) => renderAdaptImageCard(s, i)).join("")
             : "";
 
+        const frNoticeHtml = ranFR ? renderFindReplaceNotice(fr) : "";
+
         const empty = !textChanges.length && !shapeChanges.length && !imageChanges.length
-            ? `<div class="ai-empty"><p>No layer changes were recommended for this mode.</p></div>`
+            ? `<div class="ai-empty"><p>${ranFR
+                ? "Find &amp; Replace produced no changes — see the breakdown above for which rules matched."
+                : "No layer changes were recommended for this mode."}</p></div>`
             : "";
 
         document.getElementById("adaptResults").innerHTML =
-            strategyHtml + textHtml + shapeHtml + imageHtml + empty;
+            strategyHtml + frNoticeHtml + textHtml + shapeHtml + imageHtml + empty;
+    }
+
+    function renderFindReplaceNotice(fr) {
+        if (!fr) return "";
+        const rules = fr.rules || [];
+        if (!rules.length) return "";
+
+        const allMissed   = fr.matched_layers_total === 0;
+        const someMissed  = (fr.rules_without_matches || []).length > 0 && !allMissed;
+        const cls         = allMissed ? "fr-notice fr-notice-warn"
+                          : someMissed ? "fr-notice fr-notice-mixed"
+                          : "fr-notice fr-notice-ok";
+
+        const headline = allMissed
+            ? "No matches found"
+            : someMissed
+                ? `${fr.rules_with_matches} of ${rules.length} rule(s) matched`
+                : `All ${rules.length} rule(s) matched`;
+
+        const rows = rules.map(r => {
+            const layers = (r.matched_layers || [])
+                .map(l => `${escapeHtml(humanize(l.layer_id))} <span class="fr-count">×${l.match_count}</span>`)
+                .join(", ");
+            const status = r.match_count > 0
+                ? `<b class="fr-hit">${r.match_count} match${r.match_count !== 1 ? "es" : ""}</b> in ${layers}`
+                : `<span class="fr-miss">no matches</span> — check spelling, hidden characters, or a stale template snapshot`;
+            return `<li>
+                <code>"${escapeHtml(r.find)}"</code> → <code>"${escapeHtml(r.replace)}"</code>: ${status}
+            </li>`;
+        }).join("");
+
+        const tip = allMissed
+            ? `<div class="fr-tip">Tip: open a text field in the editor and copy a snippet of its text directly into the "Find" box — the comparison is case-insensitive but every other character must match exactly.</div>`
+            : "";
+
+        return `
+            <div class="${cls}">
+                <div class="fr-head">Find &amp; Replace · ${escapeHtml(headline)}</div>
+                <ul class="fr-list">${rows}</ul>
+                ${tip}
+            </div>`;
     }
 
     function renderAdaptImageCard(s, i) {

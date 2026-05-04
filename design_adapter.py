@@ -641,8 +641,7 @@ def _shape_changes_from_brand_hexes(
 
 
 def _apply_find_replace(text: str, rules: list[dict]) -> str:
-    """Case-insensitive literal substitution preserving the original casing
-    style of the replacement term. Returns the rewritten text."""
+    """Case-insensitive literal substitution. Returns the rewritten text."""
     out = text
     for rule in rules or []:
         find = (rule.get("find") or "").strip()
@@ -651,6 +650,53 @@ def _apply_find_replace(text: str, rules: list[dict]) -> str:
             continue
         out = re.sub(re.escape(find), repl, out, flags=re.IGNORECASE)
     return out
+
+
+def _count_find_replace_matches(text: str, find: str) -> int:
+    """How many times `find` (case-insensitive) appears in `text`."""
+    if not find or not text:
+        return 0
+    return len(re.findall(re.escape(find), text, flags=re.IGNORECASE))
+
+
+def _build_find_replace_diagnostics(
+    text_layers: dict[str, str],
+    rules: list[dict],
+    skip_layer_id: str | None = None,
+) -> dict:
+    """
+    Per-rule match counts so the UI can explain why find/replace produced
+    zero changes (typo, wrong case-insensitive expectation, hidden chars, etc.).
+    """
+    per_rule: list[dict] = []
+    matched_layers_total: set[str] = set()
+    for rule in rules or []:
+        find = (rule.get("find") or "").strip()
+        repl = rule.get("replace") or ""
+        if not find:
+            continue
+        layer_hits: list[dict] = []
+        rule_matches = 0
+        for lid, current in text_layers.items():
+            if lid == skip_layer_id:
+                continue
+            n = _count_find_replace_matches(current, find)
+            if n:
+                layer_hits.append({"layer_id": lid, "match_count": n})
+                matched_layers_total.add(lid)
+                rule_matches += n
+        per_rule.append({
+            "find": find,
+            "replace": repl,
+            "match_count": rule_matches,
+            "matched_layers": layer_hits,
+        })
+    return {
+        "rules": per_rule,
+        "rules_with_matches": sum(1 for r in per_rule if r["match_count"] > 0),
+        "rules_without_matches": [r["find"] for r in per_rule if r["match_count"] == 0],
+        "matched_layers_total": len(matched_layers_total),
+    }
 
 
 def run_mode(
@@ -791,6 +837,14 @@ def run_mode(
                     "reason": "Literal find & replace rule applied.",
                     "source": "find_replace",
                 })
+        # Always include diagnostics — even when nothing matched — so the UI
+        # can explain why no changes came back ("no layer contains the text
+        # you searched for"), instead of the generic empty-state.
+        layout_validation["find_replace"] = _build_find_replace_diagnostics(
+            text_layers_for_llm,
+            replace_rules,
+            skip_layer_id=website.get("layer_id"),
+        )
 
     elif mode == "ai_rewrite":
         adapter = DesignAdapter()
@@ -966,7 +1020,19 @@ def run_modes(
         image_overrides=image_overrides,
         brand_assets=brand_assets,
     )
-    text_by_layer.update(_index_changes_by_layer(base.get("text_changes") or []))
+    base_text_changes = base.get("text_changes") or []
+    # If the user only ticked "Swap Images", they explicitly do NOT want any
+    # text mutations — even from a brand-asset override field they may have
+    # filled in (e.g. paste a stray URL into the website-text input). Drop
+    # any brand_asset-sourced text rows in that case.
+    text_touching_modes = {
+        "logo_qr_website_colors", "ai_rewrite", "find_replace", "ai_with_rules",
+    }
+    if not (selected & text_touching_modes):
+        base_text_changes = [
+            c for c in base_text_changes if c.get("source") != "brand_asset"
+        ]
+    text_by_layer.update(_index_changes_by_layer(base_text_changes))
     image_by_layer.update(_index_changes_by_layer(base.get("image_changes") or []))
 
     if "image_only" in selected and len(selected) == 1:
@@ -1021,44 +1087,64 @@ def run_modes(
             layout_validation[f"ai_{ai_mode}"] = ai["layout_validation"]
 
     # ── 4. find_replace (literal, last so it acts on AI output too) ──
-    if "find_replace" in selected and replace_rules:
-        rules = [r for r in replace_rules if (r.get("find") or "").strip()]
-        # Apply rules in place to any text_change already in the bag.
-        for lid, c in list(text_by_layer.items()):
-            sug = c.get("suggested_text") or ""
-            new = _apply_find_replace(sug, rules)
-            if new != sug:
-                c["suggested_text"]     = new
-                c["word_count"]         = count_words_template(new)
-                c["find_replace_applied"] = True
-                if c.get("source") != "find_replace":
-                    base_reason = c.get("reason") or ""
-                    c["reason"] = (
-                        f"{base_reason} (find/replace rules applied)".strip()
-                        if base_reason else "Find/replace rules applied."
-                    )
-                    # Re-tag as user-authored so the layout guard respects
-                    # the literal substitution the user asked for.
-                    c["original_source"] = c.get("source") or ""
-                    c["source"] = "find_replace"
-        # Also run rules on layers nothing touched yet.
+    if "find_replace" in selected:
+        rules = [r for r in (replace_rules or []) if (r.get("find") or "").strip()]
         website_layer_id = (brand_assets.get("website") or {}).get("layer_id")
-        for lid, current in text_layers.items():
-            if lid in text_by_layer:
-                continue
-            if lid == website_layer_id:
-                continue
-            new = _apply_find_replace(current, rules)
-            if new != current:
-                text_by_layer[lid] = {
-                    "layer_id": lid,
-                    "current_text": current,
-                    "suggested_text": new,
-                    "word_count": count_words_template(new),
-                    "reason": "Literal find & replace rule applied.",
-                    "source": "find_replace",
-                }
-        summaries.append(f"Find & replace: {len(rules)} rule(s) applied.")
+
+        # Always include diagnostics — empty-state included — so the UI can
+        # explain "your find term doesn't exist anywhere in the template"
+        # instead of the generic "no changes" message.
+        layout_validation["find_replace"] = _build_find_replace_diagnostics(
+            text_layers, rules, skip_layer_id=website_layer_id,
+        )
+
+        if rules:
+            # Apply rules in place to any text_change already in the bag
+            # (e.g. AI-suggested copy gets the user's substitutions too).
+            for lid, c in list(text_by_layer.items()):
+                sug = c.get("suggested_text") or ""
+                new = _apply_find_replace(sug, rules)
+                if new != sug:
+                    c["suggested_text"]       = new
+                    c["word_count"]           = count_words_template(new)
+                    c["find_replace_applied"] = True
+                    if c.get("source") != "find_replace":
+                        base_reason = c.get("reason") or ""
+                        c["reason"] = (
+                            f"{base_reason} (find/replace rules applied)".strip()
+                            if base_reason else "Find/replace rules applied."
+                        )
+                        # Re-tag as user-authored so the layout guard respects
+                        # the literal substitution the user asked for.
+                        c["original_source"] = c.get("source") or ""
+                        c["source"] = "find_replace"
+            # Run rules on layers no other mode touched.
+            for lid, current in text_layers.items():
+                if lid in text_by_layer:
+                    continue
+                if lid == website_layer_id:
+                    continue
+                new = _apply_find_replace(current, rules)
+                if new != current:
+                    text_by_layer[lid] = {
+                        "layer_id": lid,
+                        "current_text": current,
+                        "suggested_text": new,
+                        "word_count": count_words_template(new),
+                        "reason": "Literal find & replace rule applied.",
+                        "source": "find_replace",
+                    }
+            diag = layout_validation["find_replace"]
+            if diag["matched_layers_total"]:
+                summaries.append(
+                    f"Find & replace: {len(rules)} rule(s), "
+                    f"{diag['matched_layers_total']} layer(s) matched."
+                )
+            else:
+                missing = ", ".join(f'"{f}"' for f in diag["rules_without_matches"])
+                summaries.append(
+                    f"Find & replace: no matches for {missing} in any text layer."
+                )
 
     # ── Final layout guard ────────────────────────────────
     text_changes  = list(text_by_layer.values())
