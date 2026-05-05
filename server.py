@@ -265,6 +265,8 @@ def adapt_by_mode():
 
     data = request.get_json() or {}
 
+
+
     # Accept either `modes: ["a", "b", ...]` (multi-select) or the legacy
     # singular `mode: "a"`. Empty / unknown entries are rejected.
     raw_modes = data.get("modes")
