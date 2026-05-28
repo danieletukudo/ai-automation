@@ -4,7 +4,7 @@
       "Bash(python:*)",
       "Bash(python3:*)",
       "WebFetch(domain:docs.templated.io)",
-      "Bash(curl -sv http://localhost:5001/api/layers)",
+      "Bash(curl -sv https://ai-automation-zb93.onrender.com/api/layers)",
       "Bash(curl:*)",
       "Bash(pip3 show:*)",
       "Bash(pip3 install:*)",

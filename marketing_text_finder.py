@@ -279,7 +279,7 @@ def main():
     )
 
     print("Fetching template layers from server...")
-    res = requests.get("http://localhost:5001/api/layers", timeout=15)
+    res = requests.get("https://ai-automation-zb93.onrender.com/api/layers", timeout=15)
     res.raise_for_status()
     pages = res.json()
 
